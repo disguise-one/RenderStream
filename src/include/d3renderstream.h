@@ -12,8 +12,11 @@ enum RSPixelFormat : uint32_t
     RS_FMT_BGRX8,
 
     RS_FMT_RGBA32F,
+
+    RS_FMT_RGBA16,
 };
 
+struct ID3D11Device;
 struct ID3D11Resource;
 struct ID3D12Resource;
 struct ID3D12Fence;
@@ -50,6 +53,10 @@ enum RS_ERROR
 
     RS_ERROR_INCOMPATIBLE_VERSION,
 
+    RS_ERROR_FAILED_TO_GET_DXDEVICE_FROM_RESOURCE,
+
+    RS_ERROR_FAILED_TO_INITIALISE_GPGPU,
+
     RS_ERROR_UNSPECIFIED
 };
 
@@ -83,6 +90,7 @@ typedef struct
     float sensorX, sensorY;
     float cx, cy;
     float nearZ, farZ;
+    float orthoWidth;  // If > 0, an orthographic camera should be used
     D3TrackingData d3Tracking;
 } CameraData;
 
@@ -164,15 +172,48 @@ typedef struct
     StreamDescription* streams;
 } StreamDescriptions;
 
+enum RemoteParameterType
+{
+    RS_PARAMETER_NUMBER,
+    RS_PARAMETER_IMAGE,
+    RS_PARAMETER_POSE,      // 4x4 TR matrix
+    RS_PARAMETER_TRANSFORM, // 4x4 TRS matrix
+    RS_PARAMETER_TEXT,
+};
+
 typedef struct
 {
-    const char *group;
-    const char *displayName;
-    const char *key;
     float min;
     float max;
     float step;
     float defaultValue;
+} NumericalDefaults;
+
+typedef struct
+{
+    const char* defaultValue;
+} TextDefaults;
+
+typedef union
+{
+    NumericalDefaults number;
+    TextDefaults text;
+} RemoteParameterTypeDefaults;
+
+typedef struct
+{
+    uint32_t width, height;
+    RSPixelFormat format;
+    int64_t imageId;
+} ImageFrameData;
+
+typedef struct
+{
+    const char* group;
+    const char* displayName;
+    const char* key;
+    RemoteParameterType type;
+    RemoteParameterTypeDefaults defaults;
     uint32_t nOptions;
     const char** options;
 
@@ -217,7 +258,8 @@ typedef struct
 #define D3_RENDER_STREAM_API __declspec( dllexport )
 
 #define RENDER_STREAM_VERSION_MAJOR 1
-#define RENDER_STREAM_VERSION_MINOR 23
+#define RENDER_STREAM_VERSION_MINOR 26
+
 #define RENDER_STREAM_VERSION_STRING stringify(RENDER_STREAM_VERSION_MAJOR) "." stringify(RENDER_STREAM_VERSION_MINOR)
 
 enum SenderFrameType
