@@ -109,13 +109,14 @@ int main()
     }
 
     LOAD_FN(rs_initialise);
+    LOAD_FN(rs_initialiseGpGpuWithoutInterop);
     LOAD_FN(rs_getStreams);
     LOAD_FN(rs_awaitFrameData);
     LOAD_FN(rs_getFrameCamera);
     LOAD_FN(rs_sendFrame);
     LOAD_FN(rs_shutdown);
 
-    if (rs_initialise(RENDER_STREAM_VERSION_MAJOR, RENDER_STREAM_VERSION_MINOR) != RS_ERROR_SUCCESS)
+    if (rs_initialise(RENDER_STREAM_VERSION_MAJOR, RENDER_STREAM_VERSION_MINOR) != RS_ERROR_SUCCESS || rs_initialiseGpGpuWithoutInterop(nullptr) != RS_ERROR_SUCCESS)
     {
         tcerr << "Failed to initialise RenderStream" << std::endl;
         return 3;
