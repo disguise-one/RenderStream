@@ -12,7 +12,7 @@ The API is distributed as a 64-bit Windows DLL as part of the disguise software,
 # Requirements
 * 64-bit Windows 8 and above
 * A valid [disguise software license](https://store.disguise.one/) or RenderStream license (available on [rx range](https://www.disguise.one/en/products/rx-range/) hardware)
-* An r18.0 install of the disguise software
+* An r18.1 install of the disguise software
 
 # Supports
 Please raise issues on this GitHub repository or contact support@disguise.one for general support
