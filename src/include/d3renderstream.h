@@ -83,6 +83,7 @@ typedef struct
     float sensorX, sensorY;
     float cx, cy;
     float nearZ, farZ;
+    float orthoWidth;  // If > 0, an orthographic camera should be used
     D3TrackingData d3Tracking;
 } CameraData;
 
@@ -217,7 +218,7 @@ typedef struct
 #define D3_RENDER_STREAM_API __declspec( dllexport )
 
 #define RENDER_STREAM_VERSION_MAJOR 1
-#define RENDER_STREAM_VERSION_MINOR 23
+#define RENDER_STREAM_VERSION_MINOR 25
 #define RENDER_STREAM_VERSION_STRING stringify(RENDER_STREAM_VERSION_MAJOR) "." stringify(RENDER_STREAM_VERSION_MINOR)
 
 enum SenderFrameType
