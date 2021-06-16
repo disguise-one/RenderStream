@@ -68,7 +68,7 @@ typedef void (*logger_t)(const char*);
 typedef struct
 {
     float virtualZoomScale;
-    ubyte virtualReprojectionRequired;
+    uint8_t virtualReprojectionRequired;
     float xRealCamera, yRealCamera, zRealCamera;
     float rxRealCamera, ryRealCamera, rzRealCamera;
 } D3TrackingData;  // Tracking data required by d3 but not used to render content
