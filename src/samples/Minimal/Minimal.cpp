@@ -10,7 +10,6 @@
 #include <shlwapi.h>
 #include <tchar.h>
 
-using ubyte = uint8_t;
 #include "../../include/d3renderstream.h"
 
 #if defined(UNICODE) || defined(_UNICODE)
