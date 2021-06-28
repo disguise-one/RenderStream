@@ -155,6 +155,7 @@ int main()
     }
 
     LOAD_FN(rs_initialise);
+    LOAD_FN(rs_initialiseGpGpuWithDX11Device);
     LOAD_FN(rs_getStreams);
     LOAD_FN(rs_awaitFrameData);
     LOAD_FN(rs_getFrameCamera);
@@ -250,6 +251,13 @@ int main()
             rs_shutdown();
             return 46;
         }
+    }
+
+    if (rs_initialiseGpGpuWithDX11Device(device.Get()) != RS_ERROR_SUCCESS)
+    {
+        tcerr << "Failed to initialise RenderStream GPGPU interop" << std::endl;
+        rs_shutdown();
+        return 5;
     }
 
     std::vector<uint8_t> descMem;
