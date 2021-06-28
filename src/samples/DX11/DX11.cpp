@@ -359,10 +359,19 @@ int main()
                 const float fovH = 2.0f * atan(0.5f / throwRatioH);
                 const float fovV = 2.0f * atan(0.5f / throwRatioV);
 
+                const bool orthographic = response.camera.orthoWidth > 0.0f;
                 const float cameraAspect = response.camera.sensorX / response.camera.sensorY;
                 float imageHeight, imageWidth;
-                imageWidth = 2.0f * tan(0.5f * fovH);
-                imageHeight = 2.0f * tan(0.5f * fovV);
+                if (orthographic)
+                {
+                    imageHeight = response.camera.orthoWidth / cameraAspect;
+                    imageWidth = cameraAspect * imageHeight;
+                }
+                else
+                {
+                    imageWidth = 2.0f * tan(0.5f * fovH);
+                    imageHeight = 2.0f * tan(0.5f * fovV);
+                }
 
                 const DirectX::XMMATRIX overscan = DirectX::XMMatrixTranslation(response.camera.cx, response.camera.cy, 0.f);
 
@@ -374,7 +383,7 @@ int main()
                 const float t = (-0.5f + 1.f - description.clipping.top) * imageHeight;
                 const float b = (-0.5f + 1.f - description.clipping.bottom) * imageHeight;
 
-                const DirectX::XMMATRIX projection = DirectX::XMMatrixPerspectiveOffCenterLH(l * nearZ, r * nearZ, b * nearZ, t * nearZ, nearZ, farZ);
+                const DirectX::XMMATRIX projection = orthographic ? DirectX::XMMatrixOrthographicOffCenterLH(l, r, b, t, nearZ, farZ) : DirectX::XMMatrixPerspectiveOffCenterLH(l * nearZ, r * nearZ, b * nearZ, t * nearZ, nearZ, farZ);
 
                 constantBufferData.worldViewProjection = DirectX::XMMatrixTranspose(world * view * projection * overscan);
                 context->UpdateSubresource(constantBuffer.Get(), 0, nullptr, &constantBufferData, 0, 0);
