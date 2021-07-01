@@ -128,8 +128,6 @@ typedef struct
 typedef struct
 {
     ID3D12Resource* resource;
-    ID3D12Fence* fence;
-    int32_t fenceValue;
 } Dx12Data;
 
 typedef union
@@ -260,7 +258,7 @@ typedef struct
 #define D3_RENDER_STREAM_API __declspec( dllexport )
 
 #define RENDER_STREAM_VERSION_MAJOR 1
-#define RENDER_STREAM_VERSION_MINOR 26
+#define RENDER_STREAM_VERSION_MINOR 27
 
 #define RENDER_STREAM_VERSION_STRING stringify(RENDER_STREAM_VERSION_MAJOR) "." stringify(RENDER_STREAM_VERSION_MINOR)
 
@@ -270,6 +268,12 @@ enum SenderFrameType
     RS_FRAMETYPE_DX11_TEXTURE,
     RS_FRAMETYPE_DX12_TEXTURE,
     RS_FRAMETYPE_UNKNOWN
+};
+
+enum UseDX12SharedHeapFlag
+{
+    RS_DX12_USE_SHARED_HEAP_FLAG,
+    RS_DX12_DO_NOT_USE_SHARED_HEAP_FLAG
 };
 
 // isolated functions, do not require init prior to use
@@ -290,6 +294,7 @@ extern "C" D3_RENDER_STREAM_API RS_ERROR rs_shutdown();
 
 // non-isolated functions, these require init prior to use
 
+extern "C" D3_RENDER_STREAM_API RS_ERROR rs_useDX12SharedHeapFlag(UseDX12SharedHeapFlag * flag);
 extern "C" D3_RENDER_STREAM_API RS_ERROR rs_saveSchema(const char* assetPath, Schema* schema); // Save schema for project file/custom executable at (assetPath)
 extern "C" D3_RENDER_STREAM_API RS_ERROR rs_loadSchema(const char* assetPath, /*Out*/Schema* schema, /*InOut*/uint32_t* nBytes); // Load schema for project file/custom executable at (assetPath) into a buffer of size (nBytes) starting at (schema)
 
