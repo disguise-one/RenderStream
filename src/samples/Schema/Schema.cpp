@@ -47,6 +47,8 @@ struct ScopedSchema
                 free(const_cast<char*>(parameter.group));
                 free(const_cast<char*>(parameter.displayName));
                 free(const_cast<char*>(parameter.key));
+                if (parameter.type == RS_PARAMETER_TEXT)
+                    free(const_cast<char*>(parameter.defaults.text.defaultValue));
                 for (size_t k = 0; k < parameter.nOptions; ++k)
                 {
                     free(const_cast<char*>(parameter.options[k]));
@@ -196,10 +198,11 @@ void addField(RemoteParameter& parameter, const std::string& key, const std::str
     parameter.group = _strdup(group.c_str());
     parameter.displayName = _strdup(displayName.c_str());
     parameter.key = _strdup(key.c_str());
-    parameter.defaultValue = defaultValue;
-    parameter.min = min;
-    parameter.max = max;
-    parameter.step = step;
+    parameter.type = RS_PARAMETER_NUMBER;
+    parameter.defaults.number.defaultValue = defaultValue;
+    parameter.defaults.number.min = min;
+    parameter.defaults.number.max = max;
+    parameter.defaults.number.step = step;
     parameter.nOptions = uint32_t(options.size());
     parameter.options = static_cast<const char**>(malloc(parameter.nOptions * sizeof(const char*)));
     for (size_t j = 0; j < options.size(); ++j)
@@ -227,6 +230,7 @@ int main(int argc, char** argv)
     }
 
     LOAD_FN(rs_initialise);
+    LOAD_FN(rs_initialiseGpGpuWithoutInterop);
     LOAD_FN(rs_saveSchema);
     LOAD_FN(rs_loadSchema);
     LOAD_FN(rs_setSchema);
@@ -237,7 +241,7 @@ int main(int argc, char** argv)
     LOAD_FN(rs_sendFrame);
     LOAD_FN(rs_shutdown);
 
-    if (rs_initialise(RENDER_STREAM_VERSION_MAJOR, RENDER_STREAM_VERSION_MINOR) != RS_ERROR_SUCCESS)
+    if (rs_initialise(RENDER_STREAM_VERSION_MAJOR, RENDER_STREAM_VERSION_MINOR) != RS_ERROR_SUCCESS || rs_initialiseGpGpuWithoutInterop(nullptr) != RS_ERROR_SUCCESS)
     {
         tcerr << "Failed to initialise RenderStream" << std::endl;
         return 3;
