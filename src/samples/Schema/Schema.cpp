@@ -342,6 +342,11 @@ int main(int argc, char** argv)
             response.tTracked = frameData.tTracked;
             if (rs_getFrameCamera(description.handle, &response.camera) == RS_ERROR_SUCCESS)
             {
+                if (description.format != RSPixelFormat::RS_FMT_BGRA8 && description.format != RSPixelFormat::RS_FMT_BGRX8)
+                {
+                    tcerr << "Unsupported pixel format" << std::endl;
+                    continue;
+                }
                 struct Colour
                 {
                     uint8_t b, g, r, a;

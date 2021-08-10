@@ -163,6 +163,11 @@ int main()
             response.tTracked = frameData.tTracked;
             if (rs_getFrameCamera(description.handle, &response.camera) == RS_ERROR_SUCCESS)
             {
+                if (description.format != RSPixelFormat::RS_FMT_BGRA8 && description.format != RSPixelFormat::RS_FMT_BGRX8)
+                {
+                    tcerr << "Unsupported pixel format" << std::endl;
+                    continue;
+                }
                 SenderFrameTypeData data;
                 data.cpu.stride = description.width * 4;
                 std::vector<uint8_t> pixels;

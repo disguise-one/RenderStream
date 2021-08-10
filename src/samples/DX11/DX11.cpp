@@ -102,6 +102,22 @@ const StreamDescriptions* getStreams(decltype(rs_getStreams)* rs_getStreams, std
     return reinterpret_cast<const StreamDescriptions*>(descMem.data());
 }
 
+DXGI_FORMAT toDxgiFormat(RSPixelFormat format)
+{
+    switch (format)
+    {
+    case RS_FMT_BGRA8:
+    case RS_FMT_BGRX8:
+        return DXGI_FORMAT_B8G8R8A8_UNORM;
+    case RS_FMT_RGBA32F:
+        return DXGI_FORMAT_R32G32B32A32_FLOAT;
+    case RS_FMT_RGBA16:
+        return DXGI_FORMAT_R16G16B16A16_UNORM;
+    default:
+        throw std::runtime_error("Unhandled RS pixel format");
+    }
+}
+
 static constexpr DirectX::XMFLOAT3 cubeVertices[] =
 {
     DirectX::XMFLOAT3(-0.5f,-0.5f,-0.5f),
@@ -291,7 +307,7 @@ int main()
                     rtDesc.Height = description.height;
                     rtDesc.MipLevels = 1;
                     rtDesc.ArraySize = 1;
-                    rtDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+                    rtDesc.Format = toDxgiFormat(description.format);
                     rtDesc.SampleDesc.Count = 1;
                     rtDesc.Usage = D3D11_USAGE_DEFAULT;
                     rtDesc.BindFlags = D3D11_BIND_RENDER_TARGET;
