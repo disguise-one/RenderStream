@@ -1,3 +1,5 @@
+WORK IN PROGRESS. API SUBJECT TO CHANGE
+
 # RenderStream
 RenderStream is a protocol for controlling third party render engines from the [disguise](http://disguise.one/) software. 
 
