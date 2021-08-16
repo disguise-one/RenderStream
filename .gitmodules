@@ -1,0 +1,3 @@
+[submodule "src/samples/OpenGL/glm"]
+	path = src/samples/OpenGL/glm
+	url = https://github.com/g-truc/glm/
