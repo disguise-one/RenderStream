@@ -23,6 +23,7 @@ struct ID3D11Device;
 struct ID3D11Resource;
 struct ID3D12Resource;
 struct ID3D12Fence;
+typedef unsigned int GLuint;
 struct ID3D12Device;
 struct ID3D12CommandQueue;
 // Forward declare Windows compatible handles.
