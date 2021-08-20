@@ -14,7 +14,7 @@ The RenderStream DLL is distributed as a 64-bit Windows DLL as part of the disgu
 This repository is for API definitions, documentation and examples.
 
 # Requirements
-* 64-bit Windows 8 and above
+* 64-bit Windows 10 and above
 * A valid [disguise software license](https://store.disguise.one/) or RenderStream license (available on [rx range](https://www.disguise.one/en/products/rx-range/) hardware)
 * An r19.0 install of the disguise software
 
