@@ -448,6 +448,7 @@ int main(int argc, char** argv)
     scoped.schema.scenes.scenes[0].parameters[0].options = nullptr;
     scoped.schema.scenes.scenes[0].parameters[0].dmxOffset = -1; // Auto
     scoped.schema.scenes.scenes[0].parameters[0].dmxType = 2; // Dmx8 = 0, Dmx16BigEndian = 2
+    scoped.schema.scenes.scenes[0].parameters[0].flags = REMOTEPARAMETER_NO_FLAGS;
     // Transform parameter
     scoped.schema.scenes.scenes[0].parameters[1].group = _strdup("Cube");
     scoped.schema.scenes.scenes[0].parameters[1].key = _strdup("transform_param1");
@@ -457,6 +458,7 @@ int main(int argc, char** argv)
     scoped.schema.scenes.scenes[0].parameters[1].options = nullptr;
     scoped.schema.scenes.scenes[0].parameters[1].dmxOffset = -1; // Auto
     scoped.schema.scenes.scenes[0].parameters[1].dmxType = 2; // Dmx8 = 0, Dmx16BigEndian = 2
+    scoped.schema.scenes.scenes[0].parameters[0].flags = REMOTEPARAMETER_NO_SEQUENCE;
     // Text parameter
     scoped.schema.scenes.scenes[0].parameters[2].group = _strdup("Workload status");
     scoped.schema.scenes.scenes[0].parameters[2].key = _strdup("text_param1");
@@ -467,6 +469,7 @@ int main(int argc, char** argv)
     scoped.schema.scenes.scenes[0].parameters[2].options = nullptr;
     scoped.schema.scenes.scenes[0].parameters[2].dmxOffset = -1; // Auto
     scoped.schema.scenes.scenes[0].parameters[2].dmxType = 2; // Dmx8 = 0, Dmx16BigEndian = 2
+    scoped.schema.scenes.scenes[0].parameters[0].flags = REMOTEPARAMETER_NO_FLAGS;
     if (rs_setSchema(&scoped.schema) != RS_ERROR_SUCCESS)
     {
         tcerr << "Failed to set schema" << std::endl;

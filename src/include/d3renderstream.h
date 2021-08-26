@@ -79,6 +79,12 @@ enum FRAMEDATA_FLAGS
     FRAMEDATA_RESET = 1
 };
 
+enum REMOTEPARAMETER_FLAGS
+{
+    REMOTEPARAMETER_NO_FLAGS = 0,
+    REMOTEPARAMETER_NO_SEQUENCE = 1
+};
+
 typedef uint64_t StreamHandle;
 typedef uint64_t CameraHandle;
 typedef void (*logger_t)(const char*);
@@ -113,7 +119,7 @@ typedef struct
     double localTimeDelta;
     unsigned int frameRateNumerator;
     unsigned int frameRateDenominator;
-    uint32_t flags;
+    uint32_t flags; // FRAMEDATA_FLAGS
     uint32_t scene;
 } FrameData;
 
@@ -235,6 +241,7 @@ typedef struct
 
     int32_t dmxOffset;
     uint32_t dmxType;
+    uint32_t flags; // REMOTEPARAMETER_FLAGS
 } RemoteParameter;
 
 typedef struct

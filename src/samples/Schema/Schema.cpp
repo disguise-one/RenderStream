@@ -186,7 +186,7 @@ const Schema* loadSchema(decltype(rs_loadSchema)* rs_loadSchema, const char* ass
     return reinterpret_cast<const Schema*>(schemaMem.data());
 }
 
-void addField(RemoteParameter& parameter, const std::string& key, const std::string& displayName, const std::string& group, float defaultValue, float min = 0, float max = 255, float step = 1, const std::vector<std::string>& options = {})
+void addField(RemoteParameter& parameter, const std::string& key, const std::string& displayName, const std::string& group, float defaultValue, float min = 0, float max = 255, float step = 1, const std::vector<std::string>& options = {}, bool allowSequencing = true)
 {
     if (!options.empty())
     {
@@ -211,6 +211,9 @@ void addField(RemoteParameter& parameter, const std::string& key, const std::str
     }
     parameter.dmxOffset = -1; // Auto
     parameter.dmxType = 2; // Dmx8 = 0, Dmx16BigEndian = 2
+    parameter.flags = REMOTEPARAMETER_NO_FLAGS;
+    if (!allowSequencing)
+        parameter.flags |= REMOTEPARAMETER_NO_SEQUENCE;
 }
 
 int main(int argc, char** argv)
@@ -262,7 +265,7 @@ int main(int argc, char** argv)
     scoped.schema.scenes.scenes[0].name = _strdup("Strobe");
     scoped.schema.scenes.scenes[0].nParameters = 5;
     scoped.schema.scenes.scenes[0].parameters = static_cast<RemoteParameter*>(malloc(scoped.schema.scenes.scenes[0].nParameters * sizeof(RemoteParameter)));
-    addField(scoped.schema.scenes.scenes[0].parameters[0], "stable_shared_key_speed", "Strobe speed", "Shared properties", 1.f, 0.f, 4.f, 0.01f);
+    addField(scoped.schema.scenes.scenes[0].parameters[0], "stable_shared_key_speed", "Strobe speed", "Shared properties", 1.f, 0.f, 4.f, 0.01f, {}, false);
     addField(scoped.schema.scenes.scenes[0].parameters[1], "stable_key_colour_r", "Colour R", "Strobe properties", 1.f, 0.f, 1.f, 0.001f);
     addField(scoped.schema.scenes.scenes[0].parameters[2], "stable_key_colour_g", "Colour G", "Strobe properties", 1.f, 0.f, 1.f, 0.001f);
     addField(scoped.schema.scenes.scenes[0].parameters[3], "stable_key_colour_b", "Colour B", "Strobe properties", 1.f, 0.f, 1.f, 0.001f);
@@ -270,7 +273,7 @@ int main(int argc, char** argv)
     scoped.schema.scenes.scenes[1].name = _strdup("Radar");
     scoped.schema.scenes.scenes[1].nParameters = 3;
     scoped.schema.scenes.scenes[1].parameters = static_cast<RemoteParameter*>(malloc(scoped.schema.scenes.scenes[1].nParameters * sizeof(RemoteParameter)));
-    addField(scoped.schema.scenes.scenes[1].parameters[0], "stable_shared_key_speed", "Radar speed", "Shared properties", 1.f, 0.f, 4.f, 0.01f);
+    addField(scoped.schema.scenes.scenes[1].parameters[0], "stable_shared_key_speed", "Radar speed", "Shared properties", 1.f, 0.f, 4.f, 0.01f, {}, false);
     addField(scoped.schema.scenes.scenes[1].parameters[1], "stable_key_length", "Length", "Radar properties", 0.25f, 0.f, 1.f, 0.01f);
     addField(scoped.schema.scenes.scenes[1].parameters[2], "stable_key_direction", "Direction", "Radar properties", 1, 0, 1, 1, { "Left", "Right" });
     if (rs_setSchema(&scoped.schema) != RS_ERROR_SUCCESS)
