@@ -69,6 +69,8 @@ enum RS_ERROR
 
     RS_ERROR_FAILED_TO_INITIALISE_GPGPU,
 
+    RS_ERROR_QUIT,
+
     RS_ERROR_UNSPECIFIED
 };
 
@@ -181,6 +183,8 @@ typedef struct
 {
     StreamHandle handle;
     const char* channel;
+    uint64_t mappingId;
+    int32_t iViewpoint;
     const char* name;
     uint32_t width;
     uint32_t height;
@@ -201,6 +205,13 @@ enum RemoteParameterType
     RS_PARAMETER_POSE,      // 4x4 TR matrix
     RS_PARAMETER_TRANSFORM, // 4x4 TRS matrix
     RS_PARAMETER_TEXT,
+};
+
+enum RemoteParameterDmxType
+{
+    RS_DMX_DEFAULT,
+    RS_DMX_8,
+    RS_DMX_16_BE,
 };
 
 typedef struct
@@ -239,8 +250,8 @@ typedef struct
     uint32_t nOptions;
     const char** options;
 
-    int32_t dmxOffset;
-    uint32_t dmxType;
+    int32_t dmxOffset; // DMX channel offset or auto (-1)
+    RemoteParameterDmxType dmxType;
     uint32_t flags; // REMOTEPARAMETER_FLAGS
 } RemoteParameter;
 
