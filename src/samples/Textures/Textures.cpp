@@ -447,7 +447,7 @@ int main(int argc, char** argv)
     scoped.schema.scenes.scenes[0].parameters[0].nOptions = 0;
     scoped.schema.scenes.scenes[0].parameters[0].options = nullptr;
     scoped.schema.scenes.scenes[0].parameters[0].dmxOffset = -1; // Auto
-    scoped.schema.scenes.scenes[0].parameters[0].dmxType = 2; // Dmx8 = 0, Dmx16BigEndian = 2
+    scoped.schema.scenes.scenes[0].parameters[0].dmxType = RS_DMX_16_BE;
     scoped.schema.scenes.scenes[0].parameters[0].flags = REMOTEPARAMETER_NO_FLAGS;
     // Transform parameter
     scoped.schema.scenes.scenes[0].parameters[1].group = _strdup("Cube");
@@ -457,7 +457,7 @@ int main(int argc, char** argv)
     scoped.schema.scenes.scenes[0].parameters[1].nOptions = 0;
     scoped.schema.scenes.scenes[0].parameters[1].options = nullptr;
     scoped.schema.scenes.scenes[0].parameters[1].dmxOffset = -1; // Auto
-    scoped.schema.scenes.scenes[0].parameters[1].dmxType = 2; // Dmx8 = 0, Dmx16BigEndian = 2
+    scoped.schema.scenes.scenes[0].parameters[1].dmxType = RS_DMX_16_BE;
     scoped.schema.scenes.scenes[0].parameters[0].flags = REMOTEPARAMETER_NO_SEQUENCE;
     // Text parameter
     scoped.schema.scenes.scenes[0].parameters[2].group = _strdup("Workload status");
@@ -468,7 +468,7 @@ int main(int argc, char** argv)
     scoped.schema.scenes.scenes[0].parameters[2].nOptions = 0;
     scoped.schema.scenes.scenes[0].parameters[2].options = nullptr;
     scoped.schema.scenes.scenes[0].parameters[2].dmxOffset = -1; // Auto
-    scoped.schema.scenes.scenes[0].parameters[2].dmxType = 2; // Dmx8 = 0, Dmx16BigEndian = 2
+    scoped.schema.scenes.scenes[0].parameters[2].dmxType = RS_DMX_16_BE;
     scoped.schema.scenes.scenes[0].parameters[0].flags = REMOTEPARAMETER_NO_FLAGS;
     if (rs_setSchema(&scoped.schema) != RS_ERROR_SUCCESS)
     {

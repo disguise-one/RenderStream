@@ -210,7 +210,7 @@ void addField(RemoteParameter& parameter, const std::string& key, const std::str
         parameter.options[j] = _strdup(options[j].c_str());
     }
     parameter.dmxOffset = -1; // Auto
-    parameter.dmxType = 2; // Dmx8 = 0, Dmx16BigEndian = 2
+    parameter.dmxType = RS_DMX_16_BE;
     parameter.flags = REMOTEPARAMETER_NO_FLAGS;
     if (!allowSequencing)
         parameter.flags |= REMOTEPARAMETER_NO_SEQUENCE;
