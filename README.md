@@ -31,7 +31,7 @@ Replace the filename in the path with `d3renderstream.dll`. E.g. `C:\Program Fil
 
 Load the DLL, look up the exposed API functions and call `rs_initialise` with the major and minor version your integration is built against. 
 
-NB. Workload functions will fail if your integration was not launched via the disguise software. For details on how to add your application as an asset and launch it see https://help.disguise.one/Content/Configuring/RenderStream-r18.htm
+NOTE WELL: Workload functions will fail if your integration was not launched via the disguise software. For details on how to add your application as an asset and launch it see [Discovery and launching](#discovery-and-launching)
 
 Call `rs_setSchema` to tell the disguise software what scenes and remote parameters the asset exposes.
 
@@ -66,6 +66,16 @@ In order to support rendering fragments of the same frame or multiple views onto
 * DO initialise pseudo-random sources with a fixed seed
 * DO NOT use any true random entropy
 * DO NOT use arbitrary network communications without first synchronising their values against some RenderStream provided value (such as timestamp) - the time at which network packets arrive on multiple computers can vary, causing different machines to respond differently.
+
+# Discovery and launching
+
+`d3service` scans the RenderStream Projects folder (determined by the `Computer\HKEY_CURRENT_USER\Software\d3 Technologies\d3 Production Suite\RenderStream Projects Folder` registry key) on startup and watches it for changes. 
+
+Any known filetype (.exe, .lnk, .uproject, .dfxdll) is detected as a 'RenderStream Asset' and shared with all other machines running disguise software. If a schema file (matching the asset filename with a 'rs_' prefix and '.json' extension) is available, it is parsed and shared alongside the asset.
+
+When a user launches a workload using the asset via a RenderStream layer, `d3service` on each render machine in the cluster pool looks up the executable for the filetype and launches it with the appropriate arguments and environment variables. Arguments specified in the .lnk will appear before any workload arguments.
+
+NOTE WELL that this environment must be available for all calls into the RenderStream API. Any new processes spawned by the executable must inherit the environment.
 
 # Integrating bidirectional logging
 
@@ -105,7 +115,7 @@ The application creates a `Schema` object, and fills the `scenes` member with an
 
 Saving a schema is an optional step - it is possible to rely entirely on `rs_setSchema` at runtime. Some application frameworks do not have enough metadata at runtime to provide the information necessary to create the `Schema` object, and having a schema on-disk allows d3service asset scanning to pre-populate assets with schema information.
 
-During initial development or an editing mode within your application framework, a schema can be defined which includes information about the various externally sequencable parameters the application can accept. This is usually done before RenderStream launches the application, and will be serialised as a `.json` cache of this information, next to the exe file. It is however possible to update this schema dynamically at any time, even while RenderStream is actively running the workload.
+During initial development or an editing mode within your application framework, a schema can be defined which includes information about the various externally sequencable parameters the application can accept. This is usually done before RenderStream launches the application, and will be serialised as a `.json` cache of this information, next to the file. It is however possible to update this schema dynamically at any time, even while RenderStream is actively running the workload.
 
 Once the various objects have been allocated and filled in, the application calls `rs_saveSchema(pathToExe, schema)` where `pathToExe` would be the expected location of the executable file of the application, and `schema` would be the previously created `Schema` object as discussed in [Creating a schema](#creating-a-schema).
 
