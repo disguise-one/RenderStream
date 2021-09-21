@@ -120,31 +120,37 @@ DXGI_FORMAT toDxgiFormat(RSPixelFormat format)
 
 static constexpr DirectX::XMFLOAT3 cubeVertices[] =
 {
+    DirectX::XMFLOAT3(-0.5f, 0.5f,-0.5f),
+    DirectX::XMFLOAT3(0.5f, 0.5f,-0.5f),
     DirectX::XMFLOAT3(-0.5f,-0.5f,-0.5f),
     DirectX::XMFLOAT3( 0.5f,-0.5f,-0.5f),
-    DirectX::XMFLOAT3( 0.5f,-0.5f, 0.5f),
-    DirectX::XMFLOAT3(-0.5f,-0.5f, 0.5f),
 
-    DirectX::XMFLOAT3(-0.5f, 0.5f,-0.5f),
-    DirectX::XMFLOAT3( 0.5f, 0.5f,-0.5f),
-    DirectX::XMFLOAT3( 0.5f, 0.5f, 0.5f),
     DirectX::XMFLOAT3(-0.5f, 0.5f, 0.5f),
+    DirectX::XMFLOAT3(0.5f, 0.5f, 0.5f),
+    DirectX::XMFLOAT3(-0.5f,-0.5f, 0.5f),
+    DirectX::XMFLOAT3( 0.5f,-0.5f, 0.5f),
 };
 
 static constexpr uint16_t cubeIndices[] =
 {
-    0, 1, 2, 3, 0, 4, 5, 6, 7, 4, 
-    1, 5, 
-    2, 6, 
-    3, 7
+    0, 1, 2,    // side 1
+    2, 1, 3,
+    4, 0, 6,    // side 2
+    6, 0, 2,
+    7, 5, 6,    // side 3
+    6, 5, 4,
+    3, 1, 7,    // side 4
+    7, 1, 5,
+    4, 5, 0,    // side 5
+    0, 5, 1,
+    3, 7, 2,    // side 6
+    2, 7, 6,
 };
+
 
 static constexpr UINT cubeDrawCalls[] =
 {
-    10,
-    2,
-    2,
-    2
+    36
 };
 
 
@@ -285,6 +291,7 @@ int main()
     };
     std::unordered_map<StreamHandle, RenderTarget> renderTargets;
     FrameData frameData;
+    int tick = 0;
     while (true)
     {
         // Wait for a frame request
@@ -356,7 +363,7 @@ int main()
                 const RenderTarget& target = renderTargets.at(description.handle);
                 context->OMSetRenderTargets(1, target.view.GetAddressOf(), nullptr);
 
-                const float clearColour[4] = { 0.f, 0.f, 0.f, 0.f };
+                const float clearColour[4] = { 0.f, 0.2f, 0.f, 0.f };
                 context->ClearRenderTargetView(target.view.Get(), clearColour);
 
                 D3D11_VIEWPORT viewport;
@@ -368,7 +375,7 @@ int main()
                 context->RSSetViewports(1, &viewport);
 
                 ConstantBufferStruct constantBufferData;
-                const DirectX::XMMATRIX world = DirectX::XMMatrixIdentity();
+                const DirectX::XMMATRIX world = DirectX::XMMatrixRotationRollPitchYaw(DirectX::XMConvertToRadians((float)tick), DirectX::XMConvertToRadians((float)tick), DirectX::XMConvertToRadians((float)tick));
 
                 const float pitch = -DirectX::XMConvertToRadians(response.camera.rx);
                 const float yaw = DirectX::XMConvertToRadians(response.camera.ry);
@@ -417,7 +424,7 @@ int main()
                 UINT offset = 0;
                 context->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), &stride, &offset);
                 context->IASetIndexBuffer(indexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
-                context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP);
+                context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
                 context->IASetInputLayout(inputLayout.Get());
                 context->VSSetShader(vertexShader.Get(), nullptr, 0);
                 context->VSSetConstantBuffers(0, 1, constantBuffer.GetAddressOf());
@@ -439,6 +446,7 @@ int main()
                 }
             }
         }
+        tick++;
     }
 
     if (rs_shutdown() != RS_ERROR_SUCCESS)
