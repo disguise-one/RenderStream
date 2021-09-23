@@ -5,6 +5,7 @@
 #define WIN32_LEAN_AND_MEAN
 
 #include <iostream>
+#include <mutex>
 #include <vector>
 #include <windows.h>
 #include <shlwapi.h>
@@ -160,6 +161,29 @@ struct ConstantBufferStruct
     DirectX::XMMATRIX worldViewProjection;
 };
 
+std::mutex logMutex;
+decltype(rs_logToD3)* g_rs_logToD3 = nullptr;
+void rsLog(const char* msg)
+{
+    std::lock_guard<std::mutex> lock(logMutex);
+    g_rs_logToD3(msg);
+    tcerr << "[RenderStream] " << msg << "\n";
+}
+
+void rsLogError(const char* msg)
+{
+    std::lock_guard<std::mutex> lock(logMutex);
+    g_rs_logToD3(msg);
+    tcerr << "[RenderStream] Error: " << msg << "\n";
+}
+
+void rsLogVerbose(const char* msg)
+{
+    std::lock_guard<std::mutex> lock(logMutex);
+    g_rs_logToD3(msg);
+    tcerr << "[RenderStream] Verbose: " << msg << "\n";
+}
+
 int main()
 {
     HMODULE hLib = loadRenderStream();
@@ -183,6 +207,15 @@ int main()
     LOAD_FN(rs_getFrameCamera);
     LOAD_FN(rs_sendFrame);
     LOAD_FN(rs_shutdown);
+    LOAD_FN(rs_registerLoggingFunc);
+    LOAD_FN(rs_registerErrorLoggingFunc);
+    LOAD_FN(rs_registerVerboseLoggingFunc);
+    LOAD_FN(rs_logToD3);
+    g_rs_logToD3 = rs_logToD3;
+    
+    rs_registerLoggingFunc(rsLog);
+    rs_registerErrorLoggingFunc(rsLogError);
+    rs_registerVerboseLoggingFunc(rsLogVerbose);
 
     if (rs_initialise(RENDER_STREAM_VERSION_MAJOR, RENDER_STREAM_VERSION_MINOR) != RS_ERROR_SUCCESS)
     {
