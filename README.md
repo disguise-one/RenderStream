@@ -97,7 +97,13 @@ If the application has a logging system of its own, it can be useful to get logg
 
 ## Application logging into RenderStream / d3
 
-Redirecting application logging into d3 console files allows the logging data to be distributed across the network, for viewing in the d3 application. This is useful, especially in clusters of more than one machine. In order to log information remotely in this manner, simply call `rs_logToD3` with the message you wish to send. Please ensure the data logged using this function is clean UTF-8.
+Redirecting application logging into RenderStream allows the logging data to be distributed across the network, for viewing in the d3 application. This is extremely useful, especially in clusters of more than one render machine. In order to log information remotely in this manner, call `rs_logToD3` with the message you wish to send.
+
+Please ensure the data logged using this function is clean UTF-8.
+
+Messages are sent atomically, which means that the caller should not use multiple calls to `rs_logToD3` to build a single message.
+
+Messages have a timestamp prepended and newline appended to them.
 
 ## Reporting transient application status
 
