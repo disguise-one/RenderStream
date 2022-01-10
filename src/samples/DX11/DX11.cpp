@@ -330,7 +330,6 @@ int main()
     };
     std::unordered_map<StreamHandle, RenderTarget> renderTargets;
     FrameData frameData;
-    int tick = 0;
     while (true)
     {
         // Wait for a frame request
@@ -423,7 +422,9 @@ int main()
                 context->RSSetViewports(1, &viewport);
 
                 ConstantBufferStruct constantBufferData;
-                const DirectX::XMMATRIX world = DirectX::XMMatrixRotationRollPitchYaw(DirectX::XMConvertToRadians((float)tick), DirectX::XMConvertToRadians((float)tick), DirectX::XMConvertToRadians((float)tick));
+                const float angleDeg = float(frameData.localTime * 40);
+                const float angleRad = DirectX::XMConvertToRadians(angleDeg);
+                const DirectX::XMMATRIX world = DirectX::XMMatrixRotationRollPitchYaw(angleRad, angleRad, angleRad);
 
                 const float pitch = -DirectX::XMConvertToRadians(response.camera.rx);
                 const float yaw = DirectX::XMConvertToRadians(response.camera.ry);
@@ -494,7 +495,6 @@ int main()
                 }
             }
         }
-        tick++;
     }
 
     if (rs_shutdown() != RS_ERROR_SUCCESS)
