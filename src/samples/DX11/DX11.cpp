@@ -147,12 +147,30 @@ static constexpr UINT cubeDrawCalls[] =
     2
 };
 
-
-
 struct ConstantBufferStruct 
 {
     DirectX::XMMATRIX worldViewProjection;
 };
+
+decltype(rs_logToD3)* g_rs_logToD3 = nullptr;
+
+void rsLog(const char* msg)
+{
+    if (g_rs_logToD3) { g_rs_logToD3(msg); }
+    tcerr << "[RenderStream] " << msg << "\n";
+}
+
+void rsLogError(const char* msg)
+{
+    if (g_rs_logToD3) { g_rs_logToD3(msg); }
+    tcerr << "[RenderStream] Error: " << msg << "\n";
+}
+
+void rsLogVerbose(const char* msg)
+{
+    if (g_rs_logToD3) { g_rs_logToD3(msg); }
+    tcerr << "[RenderStream] Verbose: " << msg << "\n";
+}
 
 int main()
 {
@@ -177,6 +195,16 @@ int main()
     LOAD_FN(rs_getFrameCamera);
     LOAD_FN(rs_sendFrame);
     LOAD_FN(rs_shutdown);
+
+    LOAD_FN(rs_registerLoggingFunc);
+    LOAD_FN(rs_registerErrorLoggingFunc);
+    LOAD_FN(rs_registerVerboseLoggingFunc);
+    LOAD_FN(rs_logToD3);
+    g_rs_logToD3 = rs_logToD3;
+    
+    rs_registerLoggingFunc(rsLog);
+    rs_registerErrorLoggingFunc(rsLogError);
+    rs_registerVerboseLoggingFunc(rsLogVerbose);
 
     if (rs_initialise(RENDER_STREAM_VERSION_MAJOR, RENDER_STREAM_VERSION_MINOR) != RS_ERROR_SUCCESS)
     {
