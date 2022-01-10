@@ -5,7 +5,6 @@
 #define WIN32_LEAN_AND_MEAN
 
 #include <iostream>
-#include <mutex>
 #include <vector>
 #include <windows.h>
 #include <shlwapi.h>
@@ -172,29 +171,6 @@ struct ConstantBufferStruct
 {
     DirectX::XMMATRIX worldViewProjection;
 };
-
-std::mutex logMutex;
-decltype(rs_logToD3)* g_rs_logToD3 = nullptr;
-void rsLog(const char* msg)
-{
-    std::lock_guard<std::mutex> lock(logMutex);
-    g_rs_logToD3(msg);
-    tcerr << "[RenderStream] " << msg << "\n";
-}
-
-void rsLogError(const char* msg)
-{
-    std::lock_guard<std::mutex> lock(logMutex);
-    g_rs_logToD3(msg);
-    tcerr << "[RenderStream] Error: " << msg << "\n";
-}
-
-void rsLogVerbose(const char* msg)
-{
-    std::lock_guard<std::mutex> lock(logMutex);
-    g_rs_logToD3(msg);
-    tcerr << "[RenderStream] Verbose: " << msg << "\n";
-}
 
 int main()
 {
