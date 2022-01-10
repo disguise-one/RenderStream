@@ -14,7 +14,7 @@ This repository is for API definitions, documentation and examples.
 # Requirements
 * 64-bit Windows 10 and above
 * A valid [disguise software license](https://store.disguise.one/) or RenderStream license (available on [rx range](https://www.disguise.one/en/products/rx-range/) hardware)
-* An r19.0 install of the disguise software
+* An r20.0 install of the disguise software
 
 # Support
 Please raise RenderStream API issues on this GitHub repository or contact support@disguise.one for general disguise support
@@ -41,7 +41,7 @@ If a frame request is received, update your simulation using the received frame 
 
 # High level overview of RenderStream design
 
-* Users place a custom .exe file or built-in known filetypes within the RenderStream projects folder on the rx machine.
+* Users place a custom .exe file or known filetypes within the RenderStream projects folder on the rx machine.
 * `d3service`, which is running on the rx machine, will detect that file as a 'RenderStream Asset'.
 * RenderStream Assets can be sequenced in a RenderStream layer on the disguise timeline.
 * The user chooses when to start the workload defined by the RenderStream layer.
@@ -69,11 +69,21 @@ In order to support rendering fragments of the same frame or multiple views onto
 
 `d3service` scans the RenderStream Projects folder (determined by the `Computer\HKEY_CURRENT_USER\Software\d3 Technologies\d3 Production Suite\RenderStream Projects Folder` registry key) on startup and watches it for changes. 
 
-Any known filetype (.exe, .lnk, .uproject, .dfxdll) is detected as a 'RenderStream Asset' and shared with all other machines running disguise software. If a schema file (matching the asset filename with a 'rs_' prefix and '.json' extension) is available, it is parsed and shared alongside the asset.
+Any known filetype is detected as a 'RenderStream Asset' and shared with all other machines running disguise software. If a schema file (matching the asset filename with a 'rs_' prefix and '.json' extension) is available, it is parsed and shared alongside the asset.
 
-When a user launches a workload using the asset via a RenderStream layer, `d3service` on each render machine in the cluster pool looks up the executable for the filetype and launches it with the appropriate arguments and environment variables. Arguments specified in the .lnk will appear before any workload arguments.
+When a user launches a workload using the asset via a RenderStream layer, `d3service` on each render machine in the cluster pool looks up the executable for the filetype and launches it with the appropriate arguments and environment variables. 
 
 NOTE WELL that this environment must be available for all calls into the RenderStream API. Any new processes spawned by the executable must inherit the environment.
+
+## Known filetypes
+
+`d3service` has built-in support for .exe, .lnk, .uproject and .dfxdll files. Custom filetypes can be added by creating a 'permitted_custom_extensions.txt' file in the RenderStream Projects root with one extension per line (e.g. 'dfx' for .dfx files)
+
+* .exe files are launched as-is with the workload arguments supplied in the RenderStream layer.
+* .lnk files are parsed for their executable and arguments ("Target"), and working directory ("Start in") and launched using the target executable. Arguments specified in the .lnk will appear before any workload arguments.
+* .uproject files are launched with the Unreal Engine editor associated with the uproject
+* .dfxdll files are launched with the notch_host.exe bundled with disguise software
+* Files with custom extensions are launched with the default application associated with the file type. The asset's filename will appear before any workload arguments.
 
 # Integrating bidirectional logging
 
@@ -85,7 +95,13 @@ If the application has a logging system of its own, it can be useful to get logg
 
 ## Application logging into RenderStream / d3
 
-Redirecting application logging into d3 console files allows the logging data to be distributed across the network, for viewing in the d3 application. This is useful, especially in clusters of more than one machine. In order to log information remotely in this manner, simply call `rs_logToD3` with the message you wish to send. Please ensure the data logged using this function is clean UTF-8.
+Redirecting application logging into RenderStream allows the logging data to be distributed across the network, for viewing in the d3 application. This is extremely useful, especially in clusters of more than one render machine. In order to log information remotely in this manner, call `rs_logToD3` with the message you wish to send.
+
+Please ensure the data logged using this function is clean UTF-8.
+
+Messages are sent atomically, which means that the caller should not use multiple calls to `rs_logToD3` to build a single message.
+
+Messages have a timestamp prepended and newline appended to them.
 
 ## Reporting transient application status
 

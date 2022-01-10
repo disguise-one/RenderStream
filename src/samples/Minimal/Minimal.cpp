@@ -3,6 +3,7 @@
 // Usage: Compile, copy the executable into your RenderStream Projects folder and launch via d3
 
 #define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
 
 #include <iostream>
 #include <vector>
@@ -163,15 +164,48 @@ int main()
             response.tTracked = frameData.tTracked;
             if (rs_getFrameCamera(description.handle, &response.camera) == RS_ERROR_SUCCESS)
             {
-                if (description.format != RSPixelFormat::RS_FMT_BGRA8 && description.format != RSPixelFormat::RS_FMT_BGRX8)
+                const float strobe = float(abs(1.0 - fmod(frameData.tTracked, 2.0)));
+                std::vector<uint8_t> pixel;
+                switch (description.format)
                 {
+                case RS_FMT_BGRA8:
+                case RS_FMT_BGRX8:
+                case RS_FMT_RGBA8:
+                case RS_FMT_RGBX8:
+                {
+                    pixel.resize(4 * sizeof(uint8_t), uint8_t(strobe * std::numeric_limits<uint8_t>::max()));
+                    break;
+                }
+                case RS_FMT_RGBA32F:
+                {
+                    pixel.resize(4 * sizeof(float));
+                    for (size_t i = 0; i < 4; ++i)
+                        std::memcpy(pixel.data() + i * sizeof(float), &strobe, sizeof(strobe));
+                    break;
+                }
+                case RS_FMT_RGBA16:
+                {
+                    const uint16_t strobe16 = uint16_t(strobe * std::numeric_limits<uint16_t>::max());
+                    pixel.resize(4 * sizeof(uint16_t));
+                    for (size_t i = 0; i < 4; ++i)
+                        std::memcpy(pixel.data() + i * sizeof(uint16_t), &strobe16, sizeof(strobe16));
+                    break;
+                }
+                default:
                     tcerr << "Unsupported pixel format" << std::endl;
                     continue;
                 }
+
                 SenderFrameTypeData data;
-                data.cpu.stride = description.width * 4;
+                data.cpu.stride = description.width * uint32_t(pixel.size());
                 std::vector<uint8_t> pixels;
-                pixels.resize(data.cpu.stride * description.height, uint8_t(abs(1.0 - fmod(frameData.tTracked, 2.0)) * 255));
+                pixels.reserve(data.cpu.stride * description.height);
+                // Fill canvas with variable-sized pixels
+                for (size_t i = 0; i < description.width * description.height; ++i)
+                {
+                    pixels.insert(pixels.end(), pixel.begin(), pixel.end());
+                }
+
                 data.cpu.data = pixels.data();
 
                 if (rs_sendFrame(description.handle, RS_FRAMETYPE_HOST_MEMORY, data, &response) != RS_ERROR_SUCCESS)

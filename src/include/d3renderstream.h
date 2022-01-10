@@ -14,14 +14,24 @@ enum RSPixelFormat : uint32_t
     RS_FMT_RGBA32F,
 
     RS_FMT_RGBA16,
+
+    RS_FMT_RGBA8,
+    RS_FMT_RGBX8,
 };
 
 struct ID3D11Device;
 struct ID3D11Resource;
 struct ID3D12Resource;
 struct ID3D12Fence;
+typedef unsigned int GLuint;
 struct ID3D12Device;
 struct ID3D12CommandQueue;
+// Forward declare Windows compatible handles.
+#define D3_DECLARE_HANDLE(name) \
+  struct name##__;                  \
+  typedef struct name##__* name
+D3_DECLARE_HANDLE(HGLRC);
+D3_DECLARE_HANDLE(HDC);
 
 enum RS_ERROR
 {
@@ -59,6 +69,8 @@ enum RS_ERROR
 
     RS_ERROR_FAILED_TO_INITIALISE_GPGPU,
 
+    RS_ERROR_QUIT,
+
     RS_ERROR_UNSPECIFIED
 };
 
@@ -67,6 +79,12 @@ enum FRAMEDATA_FLAGS
 {
     FRAMEDATA_NO_FLAGS = 0,
     FRAMEDATA_RESET = 1
+};
+
+enum REMOTEPARAMETER_FLAGS
+{
+    REMOTEPARAMETER_NO_FLAGS = 0,
+    REMOTEPARAMETER_NO_SEQUENCE = 1
 };
 
 typedef uint64_t StreamHandle;
@@ -103,7 +121,7 @@ typedef struct
     double localTimeDelta;
     unsigned int frameRateNumerator;
     unsigned int frameRateDenominator;
-    uint32_t flags;
+    uint32_t flags; // FRAMEDATA_FLAGS
     uint32_t scene;
 } FrameData;
 
@@ -130,11 +148,17 @@ typedef struct
     ID3D12Resource* resource;
 } Dx12Data;
 
+typedef struct
+{
+    GLuint texture;
+} OpenGlData;
+
 typedef union
 {
     HostMemoryData cpu;
     Dx11Data dx11;
     Dx12Data dx12;
+    OpenGlData gl;
 } SenderFrameTypeData;
 
 typedef struct
@@ -159,6 +183,8 @@ typedef struct
 {
     StreamHandle handle;
     const char* channel;
+    uint64_t mappingId;
+    int32_t iViewpoint;
     const char* name;
     uint32_t width;
     uint32_t height;
@@ -179,6 +205,13 @@ enum RemoteParameterType
     RS_PARAMETER_POSE,      // 4x4 TR matrix
     RS_PARAMETER_TRANSFORM, // 4x4 TRS matrix
     RS_PARAMETER_TEXT,
+};
+
+enum RemoteParameterDmxType
+{
+    RS_DMX_DEFAULT,
+    RS_DMX_8,
+    RS_DMX_16_BE,
 };
 
 typedef struct
@@ -217,8 +250,9 @@ typedef struct
     uint32_t nOptions;
     const char** options;
 
-    int32_t dmxOffset;
-    uint32_t dmxType;
+    int32_t dmxOffset; // DMX channel offset or auto (-1)
+    RemoteParameterDmxType dmxType;
+    uint32_t flags; // REMOTEPARAMETER_FLAGS
 } RemoteParameter;
 
 typedef struct
@@ -258,7 +292,7 @@ typedef struct
 #define D3_RENDER_STREAM_API __declspec( dllexport )
 
 #define RENDER_STREAM_VERSION_MAJOR 1
-#define RENDER_STREAM_VERSION_MINOR 27
+#define RENDER_STREAM_VERSION_MINOR 29
 
 #define RENDER_STREAM_VERSION_STRING stringify(RENDER_STREAM_VERSION_MAJOR) "." stringify(RENDER_STREAM_VERSION_MINOR)
 
@@ -267,6 +301,7 @@ enum SenderFrameType
     RS_FRAMETYPE_HOST_MEMORY,
     RS_FRAMETYPE_DX11_TEXTURE,
     RS_FRAMETYPE_DX12_TEXTURE,
+    RS_FRAMETYPE_OPENGL_TEXTURE,
     RS_FRAMETYPE_UNKNOWN
 };
 
@@ -290,6 +325,7 @@ extern "C" D3_RENDER_STREAM_API RS_ERROR rs_initialiseGpGpuWithoutInterop(ID3D11
 extern "C" D3_RENDER_STREAM_API RS_ERROR rs_initialiseGpGpuWithDX11Device(ID3D11Device* device);
 extern "C" D3_RENDER_STREAM_API RS_ERROR rs_initialiseGpGpuWithDX11Resource(ID3D11Resource* resource);
 extern "C" D3_RENDER_STREAM_API RS_ERROR rs_initialiseGpGpuWithDX12DeviceAndQueue(ID3D12Device* device, ID3D12CommandQueue* queue);
+extern "C" D3_RENDER_STREAM_API RS_ERROR rs_initialiseGpGpuWithOpenGlContexts(HGLRC glContext, HDC deviceContext);
 extern "C" D3_RENDER_STREAM_API RS_ERROR rs_shutdown();
 
 // non-isolated functions, these require init prior to use
@@ -316,7 +352,7 @@ extern "C" D3_RENDER_STREAM_API RS_ERROR rs_getFrameText(uint64_t schemaHash, ui
 extern "C" D3_RENDER_STREAM_API RS_ERROR rs_getFrameCamera(StreamHandle streamHandle, /*Out*/CameraData* outCameraData);  // returns the CameraData for this stream, or RS_ERROR_NOTFOUND if no camera data is available for this stream on this frame
 extern "C" D3_RENDER_STREAM_API RS_ERROR rs_sendFrame(StreamHandle streamHandle, SenderFrameType frameType, SenderFrameTypeData data, const CameraResponseData* sendData); // publish a frame buffer which was generated from the associated tracking and timing information.
 
-extern "C" D3_RENDER_STREAM_API RS_ERROR rs_logToD3(const char* str);
+extern "C" D3_RENDER_STREAM_API RS_ERROR rs_logToD3(const char* str); // Transmit log message over network. New line automatically appended
 extern "C" D3_RENDER_STREAM_API RS_ERROR rs_sendProfilingData(ProfilingEntry * entries, int count);
 extern "C" D3_RENDER_STREAM_API RS_ERROR rs_setNewStatusMessage(const char* msg);
 

@@ -15,6 +15,7 @@
 #include <DirectXMath.h>
 #include <wrl.h>
 #include <unordered_map>
+#include <sstream>
 
 // auto-generated from hlsl
 #include "Generated_Code/VertexShader.h"
@@ -30,6 +31,17 @@
 #define tcerr std::cerr
 #endif
 
+RS_ERROR (*_rs_logToD3)(const char*) = nullptr;
+
+#define LOG(streamexpr) { \
+    std::ostringstream s; \
+    s << streamexpr; \
+    std::string message = s.str(); \
+    std::cerr << message << std::endl; \
+    if (_rs_logToD3) \
+        _rs_logToD3(message.c_str()); \
+}
+
 #pragma comment(lib, "Shlwapi.lib")
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "d3dcompiler.lib")
@@ -40,7 +52,7 @@ HMODULE loadRenderStream()
     HKEY hKey;
     if (FAILED(RegOpenKeyEx(HKEY_CURRENT_USER, TEXT("Software\\d3 Technologies\\d3 Production Suite"), 0, KEY_READ, &hKey)))
     {
-        tcerr << "Failed to open 'Software\\d3 Technologies\\d3 Production Suite' registry key" << std::endl;
+        LOG("Failed to open 'Software\\d3 Technologies\\d3 Production Suite' registry key");
         return nullptr;
     }
 
@@ -48,26 +60,26 @@ HMODULE loadRenderStream()
     DWORD bufferSize = sizeof(buffer);
     if (FAILED(RegQueryValueEx(hKey, TEXT("exe path"), 0, nullptr, reinterpret_cast<LPBYTE>(buffer), &bufferSize)))
     {
-        tcerr << "Failed to query value of 'exe path'" << std::endl;
+        LOG("Failed to query value of 'exe path'");
         return nullptr;
     }
 
     if (!PathRemoveFileSpec(buffer))
     {
-        tcerr << "Failed to remove file spec from path: " << buffer << std::endl;
+        LOG("Failed to remove file spec from path: " << buffer);
         return nullptr;
     }
 
     if (_tcscat_s(buffer, bufferSize, TEXT("\\d3renderstream.dll")) != 0)
     {
-        tcerr << "Failed to append filename to path: " << buffer << std::endl;
+        LOG("Failed to append filename to path: " << buffer);
         return nullptr;
     }
 
     HMODULE hLib = ::LoadLibraryEx(buffer, NULL, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_APPLICATION_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32 | LOAD_LIBRARY_SEARCH_USER_DIRS);
     if (!hLib)
     {
-        tcerr << "Failed to load dll: " << buffer << std::endl;
+        LOG("Failed to load dll: " << buffer);
         return nullptr;
     }
     return hLib;
@@ -189,14 +201,14 @@ int main()
     HMODULE hLib = loadRenderStream();
     if (!hLib)
     {
-        tcerr << "Failed to load RenderStream DLL" << std::endl;
+        LOG("Failed to load RenderStream DLL");
         return 1;
     }
 
 #define LOAD_FN(FUNC_NAME) \
     decltype(FUNC_NAME)* FUNC_NAME = reinterpret_cast<decltype(FUNC_NAME)>(GetProcAddress(hLib, #FUNC_NAME)); \
     if (!FUNC_NAME) { \
-        tcerr << "Failed to get function " #FUNC_NAME " from DLL" << std::endl; \
+        LOG("Failed to get function " #FUNC_NAME " from DLL"); \
         return 2; \
     }
 
@@ -207,21 +219,15 @@ int main()
     LOAD_FN(rs_getFrameCamera);
     LOAD_FN(rs_sendFrame);
     LOAD_FN(rs_shutdown);
-    LOAD_FN(rs_registerLoggingFunc);
-    LOAD_FN(rs_registerErrorLoggingFunc);
-    LOAD_FN(rs_registerVerboseLoggingFunc);
-    LOAD_FN(rs_logToD3);
-    g_rs_logToD3 = rs_logToD3;
-    
-    rs_registerLoggingFunc(rsLog);
-    rs_registerErrorLoggingFunc(rsLogError);
-    rs_registerVerboseLoggingFunc(rsLogVerbose);
+    _rs_logToD3 = reinterpret_cast<decltype(_rs_logToD3)>(GetProcAddress(hLib, "rs_logToD3"));
 
     if (rs_initialise(RENDER_STREAM_VERSION_MAJOR, RENDER_STREAM_VERSION_MINOR) != RS_ERROR_SUCCESS)
     {
-        tcerr << "Failed to initialise RenderStream" << std::endl;
+        LOG("Failed to initialise RenderStream");
         return 3;
     }
+
+    LOG("RenderStream initialised - program starting");
 
 #ifdef _DEBUG
     const uint32_t deviceFlags = D3D11_CREATE_DEVICE_DEBUG;
@@ -232,7 +238,7 @@ int main()
     Microsoft::WRL::ComPtr<ID3D11DeviceContext> context;
     if (FAILED(D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, deviceFlags, nullptr, 0, D3D11_SDK_VERSION, device.GetAddressOf(), nullptr, context.GetAddressOf())))
     {
-        tcerr << "Failed to initialise DirectX 11" << std::endl;
+        LOG("Failed to initialise DirectX 11");
         rs_shutdown();
         return 4;
     }
@@ -247,7 +253,7 @@ int main()
         vertexData.SysMemSlicePitch = 0;
         if (FAILED(device->CreateBuffer(&vertexDesc, &vertexData, vertexBuffer.GetAddressOf())))
         {
-            tcerr << "Failed to initialise DirectX 11: vertex buffer" << std::endl;
+            LOG("Failed to initialise DirectX 11: vertex buffer");
             rs_shutdown();
             return 41;
         }
@@ -262,7 +268,7 @@ int main()
         indexData.SysMemSlicePitch = 0;
         if (FAILED(device->CreateBuffer(&indexDesc, &indexData, indexBuffer.GetAddressOf())))
         {
-            tcerr << "Failed to initialise DirectX 11: index buffer" << std::endl;
+            LOG("Failed to initialise DirectX 11: index buffer");
             rs_shutdown();
             return 42;
         }
@@ -272,7 +278,7 @@ int main()
     {
         if (FAILED(device->CreateVertexShader(VertexShaderBlob, std::size(VertexShaderBlob), nullptr, vertexShader.GetAddressOf())))
         {
-            tcerr << "Failed to initialise DirectX 11: vertex shader" << std::endl;
+            LOG("Failed to initialise DirectX 11: vertex shader");
             rs_shutdown();
             return 43;
         }
@@ -283,7 +289,7 @@ int main()
 
         if (FAILED(device->CreateInputLayout(inputElementDesc, ARRAYSIZE(inputElementDesc), VertexShaderBlob, std::size(VertexShaderBlob), inputLayout.GetAddressOf())))
         {
-            tcerr << "Failed to initialise DirectX 11: index buffer" << std::endl;
+            LOG("Failed to initialise DirectX 11: index buffer");
             rs_shutdown();
             return 44;
         }
@@ -292,7 +298,7 @@ int main()
     {
         if (FAILED(device->CreatePixelShader(PixelShaderBlob, std::size(PixelShaderBlob), nullptr, pixelShader.GetAddressOf())))
         {
-            tcerr << "Failed to initialise DirectX 11: pixel shader" << std::endl;
+            LOG("Failed to initialise DirectX 11: pixel shader");
             rs_shutdown();
             return 45;
         }
@@ -302,7 +308,7 @@ int main()
         CD3D11_BUFFER_DESC constantBufferDesc(sizeof(ConstantBufferStruct), D3D11_BIND_CONSTANT_BUFFER);
         if (FAILED(device->CreateBuffer(&constantBufferDesc, nullptr, constantBuffer.GetAddressOf())))
         {
-            tcerr << "Failed to initialise DirectX 11: constant buffer" << std::endl;
+            LOG("Failed to initialise DirectX 11: constant buffer");
             rs_shutdown();
             return 46;
         }
@@ -310,7 +316,7 @@ int main()
 
     if (rs_initialiseGpGpuWithDX11Device(device.Get()) != RS_ERROR_SUCCESS)
     {
-        tcerr << "Failed to initialise RenderStream GPGPU interop" << std::endl;
+        LOG("Failed to initialise RenderStream GPGPU interop");
         rs_shutdown();
         return 5;
     }
@@ -366,20 +372,29 @@ int main()
             }
             catch (const std::exception& e)
             {
-                tcerr << e.what() << std::endl;
+                LOG(e.what());
                 rs_shutdown();
                 return 6;
             }
-            tcout << "Found " << (header ? header->nStreams : 0) << " streams" << std::endl;
+            LOG("Found " << (header ? header->nStreams : 0) << " streams");
             continue;
         }
         else if (err == RS_ERROR_TIMEOUT)
         {
             continue;
         }
+        else if (err == RS_ERROR_QUIT)
+        {
+            LOG("Exiting due to quit request.");
+            RS_ERROR err = rs_shutdown();
+            if (err == RS_ERROR_SUCCESS)
+                return 0;
+            else
+                return 99;
+        }
         else if (err != RS_ERROR_SUCCESS)
         {
-            tcerr << "rs_awaitFrameData returned " << err << std::endl;
+            LOG("rs_awaitFrameData returned " << err);
             break;
         }
 
@@ -473,7 +488,7 @@ int main()
                 data.dx11.resource = target.texture.Get();
                 if (rs_sendFrame(description.handle, RS_FRAMETYPE_DX11_TEXTURE, data, &response) != RS_ERROR_SUCCESS)
                 {
-                    tcerr << "Failed to send frame" << std::endl;
+                    LOG("Failed to send frame");
                     rs_shutdown();
                     return 7;
                 }
@@ -484,7 +499,7 @@ int main()
 
     if (rs_shutdown() != RS_ERROR_SUCCESS)
     {
-        tcerr << "Failed to shutdown RenderStream" << std::endl;
+        LOG("Failed to shutdown RenderStream");
         return 99;
     }
 
