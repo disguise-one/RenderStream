@@ -1,7 +1,6 @@
 # Followers
 
-Followers allow RenderStream-enabled engines to distribute simulation data between nodes. This allows engines to perform processing which would otherwise be difficult
-or impossible to distribute, due to necessary local state, network dependencies, or numerical precision issues.
+Followers allow RenderStream-enabled engines to distribute simulation data between nodes. This is an optional extension to the RenderStream system, designed for engines which have their own synchronisation mechanisms built in. This allows engines to perform processing which would otherwise be difficult or impossible to distribute, due to necessary local state, network dependencies, or numerical precision issues.
 
 RenderStream does not provide the primitives to perform this synchronisation - the engine is responsible for the serialisation, transmission and deserialisation of the engine
 data. What the follower system in RenderStream allows for, is the synchronisation of RenderStream-specific information and the associated synchronisation of the resulting frame
@@ -25,5 +24,5 @@ The engine integration must decide the following roles for each node within a cl
 - Deserialise and apply the received results.
 - Use the `tTracked` value from the received results, and call `rs_beginFollowerFrame(tTracked)`. Do *not* call `rs_awaitFrameData`.
 - The status returned from `rs_beginFollowerFrame` can be any of the values normally returned from `rs_awaitFrameData`.
-- If `RS_ERROR_STREAMS_CHANGED` is returned, the engine must adjust the streams as appropriate, and call `rs_beginFollowerFrame` with the same `tTracked` value.
+- If `RS_ERROR_STREAMS_CHANGED` is returned, the engine must adjust the streams as appropriate, and call `rs_beginFollowerFrame` again with the same `tTracked` value, in order to produce the required frame.
 - Render the frame using `rs_getFrameCamera` and call `rs_sendFrame` as normal.
