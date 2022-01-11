@@ -151,7 +151,15 @@ Once the application has a list of streams the RenderStream system needs from a 
 
 ## Handling frame requests
 
-Once the application has a list of stream definitions, it should enter a loop of calling `rs_awaitFrameData` - once await succeeds, the application knows it has been requested to provide a frame for display by d3. It's important to note that a RenderStream 'frame' encompasses potentially multiple individual renders, as multiple streams can be served across the network cluster, or within the individual application.
+Once the application has a list of stream definitions, it should enter a loop of calling `rs_awaitFrameData` and checking the return status value.
+
+On `RS_ERROR_STREAMS_CHANGED`, apply the above [Stream definitions](#stream-definitions) logic.
+
+On `RS_ERROR_QUIT`, gracefully terminate the application.
+
+On `RS_ERROR_TIMEOUT`, the application can do any non-RenderStream processing it requires. If running as a part of a workload, it is not recommended to perform a render in response to a timeout, and it is not valid to call `rs_sendFrame`.
+
+On RS_ERROR_SUCCESS, the application knows it has been requested to provide a frame for display by d3. It's important to note that a RenderStream 'frame' encompasses potentially multiple individual renders, as multiple streams can be served across the network cluster, or within the individual application.
 
 With the `FrameData` object returned by RenderStream, the application should apply the updates to time provided by RenderStream. If the application has used the schema system, it should also call `rs_getFrameParameters` using the schema information to allocate the correct buffer size. The application is expected to apply these values immediately to whatever elements of the simulation the parameters represent. This is done once per RenderStream frame, not per stream.
 
