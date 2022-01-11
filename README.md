@@ -155,9 +155,27 @@ Once the application has a list of stream definitions, it should enter a loop of
 
 With the `FrameData` object returned by RenderStream, the application should apply the updates to time provided by RenderStream. If the application has used the schema system, it should also call `rs_getFrameParameters` using the schema information to allocate the correct buffer size. The application is expected to apply these values immediately to whatever elements of the simulation the parameters represent. This is done once per RenderStream frame, not per stream.
 
-The application then calls `rs_getFrameCamera` in an inner loop with the `StreamHandle` value available in each stream definition it queried earlier. The camera data provided should be applied without smoothing or interpolation. No application simulation or update should be done within this inner loop - only rendering. Multiple streams would be rendered to separate buffers. If the application does not support a movable camera, the application is not required to call `rs_getFrameCamera`. Note that this means the application would only be able to serve 2D workloads.
+The application then calls `rs_getFrameCamera` in an inner loop with the `StreamHandle` value available in each stream definition it queried earlier. See "applying camera data" below. No application simulation or update should be done within this inner loop - only rendering. The goal is to render the same scene from multiple viewpoints, and the method for this may vary per engine. Note that these viewpoints may diverge significantly from each other, depending on the use case. Multiple streams would be rendered to separate buffers. If the application does not support a movable camera, the application is not required to call `rs_getFrameCamera`. Note that this means the application would only be able to serve 2D workloads.
 
 Once the render calls are dispatched (i.e. it is not necessary to wait for any GPU work to complete), the application should call `rs_sendFrame` with the same `StreamHandle` as provided the camera information, as well as a `CameraResponseData` object which must include the tTracked value from the incoming `FrameData` and the `CameraData` from the corresponding call to `rs_getFrameCamera`, if it was performed.
+
+## Applying camera data
+
+The `CameraData` struct, filled in by `rs_getFrameCamera` has 2 modes - perspective, and orthographic. The camera data provided should be applied without smoothing or interpolation, as this is synchronised between all render nodes.
+
+To determine if the camera is in perspective or orthographic mode, check if `orthoWidth == 0` - if true, the camera is a perspective projection, otherwise it is orthographic.
+
+The x, y, z fields are translation coordinates in metres, and the rx,ry, and rz fields correspond to pitch, yaw and roll, in degrees, respectively. The euler order for applying the rotation is yaw, then pitch, then roll. For perspective cameras, this defines the position and orientation of the focal point of the camera. For orthographic cameras, this defines the center of the image plane within the view volume.
+
+Aspect ratio (`aspectRatio` below) is determined by `sensorX / sensorY`.
+
+Orthographic cameras use `orthoWidth` for the horizontal measurement of the view volume, `orthoWidth / aspectRatio` for the vertical measurement. Both are in metres.
+
+Perspective cameras should use the focal length and sensor sizes to compute throw ratios or field of view values as appropriate.
+
+Once the perspective matrix is found, it is necessary to also apply the clipping values to adjust the projected area. This allows distribution of the frame buffer across multiple nodes. This information is available in the `StreamDescription` for the given stream.
+
+The samples in this repository show this process in detail, and it is recommended to use the calculations given in the samples as reference for this, to ensure correctness.
 
 # Buffer calling convention
 
