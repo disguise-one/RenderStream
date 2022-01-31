@@ -55,7 +55,7 @@ If a frame request is received, update your simulation using the received frame 
 * The application calls `rs_awaitFrameData` which blocks until a render request is received.
 * The application uses the frame data (camera, parameter and timing information) to render a frame.
 * The application calls `rs_sendFrame` which returns the rendered frame back to the disguise session for final composition, temporal alignment, colour correction and output to the display devices.
-* The application loops around to call `rs_awaitFrameData` again, and the process repeats until the user stops the workload, which causes WM_CLOSE to be issued to the application.
+* The application loops around to call `rs_awaitFrameData` again, and the process repeats until the user stops the workload, which causes `rs_awaitFrameData` to request a quit. If the application does not quit in a timely manner, `d3service` will send a close event and eventually terminate the application process.
 
 # Application programming dos and don'ts
 
