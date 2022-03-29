@@ -685,8 +685,6 @@ int main()
                 ID3D12CommandList* ppCommandLists[] = { commandList.Get() };
                 commandQueue->ExecuteCommandLists(1, ppCommandLists);
 
-                fence->wait();
-
                 SenderFrameTypeData data;
                 data.dx12.resource = target.texture.Get();
                 if (rs_sendFrame(description.handle, RS_FRAMETYPE_DX12_TEXTURE, data, &response) != RS_ERROR_SUCCESS)
