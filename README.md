@@ -14,7 +14,7 @@ This repository is for API definitions, documentation and examples.
 # Requirements
 * 64-bit Windows 10 and above
 * A valid [disguise software license](https://store.disguise.one/) or RenderStream license (available on [rx range](https://www.disguise.one/en/products/rx-range/) hardware)
-* An r20.3 install of the disguise software
+* An r21 install of the disguise software
 
 # Support
 Please raise RenderStream API issues on this GitHub repository or contact support@disguise.one for general disguise support
