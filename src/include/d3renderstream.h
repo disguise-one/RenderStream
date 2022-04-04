@@ -26,6 +26,10 @@ struct ID3D12Fence;
 typedef unsigned int GLuint;
 struct ID3D12Device;
 struct ID3D12CommandQueue;
+typedef struct VkDevice_T* VkDevice;
+typedef struct VkDeviceMemory_T* VkDeviceMemory;
+typedef uint64_t VkDeviceSize;
+typedef struct VkSemaphore_T* VkSemaphore;
 // Forward declare Windows compatible handles.
 #define D3_DECLARE_HANDLE(name) \
   struct name##__;                  \
@@ -153,12 +157,26 @@ typedef struct
     GLuint texture;
 } OpenGlData;
 
+typedef struct
+{
+    VkDeviceMemory memory;
+    VkDeviceSize size;
+    RSPixelFormat format;
+    uint32_t width;
+    uint32_t height;
+    VkSemaphore waitSemaphore;
+    uint64_t waitSemaphoreValue;
+    VkSemaphore signalSemaphore;
+    uint64_t signalSemaphoreValue;
+} VulkanData;
+
 typedef union
 {
     HostMemoryData cpu;
     Dx11Data dx11;
     Dx12Data dx12;
     OpenGlData gl;
+    VulkanData vk;
 } SenderFrameTypeData;
 
 typedef struct
@@ -292,7 +310,7 @@ typedef struct
 #define D3_RENDER_STREAM_API __declspec( dllexport )
 
 #define RENDER_STREAM_VERSION_MAJOR 1
-#define RENDER_STREAM_VERSION_MINOR 29
+#define RENDER_STREAM_VERSION_MINOR 30
 
 #define RENDER_STREAM_VERSION_STRING stringify(RENDER_STREAM_VERSION_MAJOR) "." stringify(RENDER_STREAM_VERSION_MINOR)
 
@@ -302,6 +320,7 @@ enum SenderFrameType
     RS_FRAMETYPE_DX11_TEXTURE,
     RS_FRAMETYPE_DX12_TEXTURE,
     RS_FRAMETYPE_OPENGL_TEXTURE,
+    RS_FRAMETYPE_VULKAN_TEXTURE,
     RS_FRAMETYPE_UNKNOWN
 };
 
@@ -326,6 +345,7 @@ extern "C" D3_RENDER_STREAM_API RS_ERROR rs_initialiseGpGpuWithDX11Device(ID3D11
 extern "C" D3_RENDER_STREAM_API RS_ERROR rs_initialiseGpGpuWithDX11Resource(ID3D11Resource* resource);
 extern "C" D3_RENDER_STREAM_API RS_ERROR rs_initialiseGpGpuWithDX12DeviceAndQueue(ID3D12Device* device, ID3D12CommandQueue* queue);
 extern "C" D3_RENDER_STREAM_API RS_ERROR rs_initialiseGpGpuWithOpenGlContexts(HGLRC glContext, HDC deviceContext);
+extern "C" D3_RENDER_STREAM_API RS_ERROR rs_initialiseGpGpuWithVulkanDevice(VkDevice device);
 extern "C" D3_RENDER_STREAM_API RS_ERROR rs_shutdown();
 
 // non-isolated functions, these require init prior to use
