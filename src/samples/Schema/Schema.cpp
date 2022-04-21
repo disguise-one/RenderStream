@@ -6,11 +6,13 @@
 
 #include <iostream>
 #include <vector>
+#include <string>
 #include <windows.h>
 #include <shlwapi.h>
 #include <tchar.h>
 
 #include "../../include/d3renderstream.h"
+#include "../../include/d3helpers.hpp"
 
 #if defined(UNICODE) || defined(_UNICODE)
 #define tcout std::wcout
@@ -22,70 +24,6 @@
 
 #pragma comment(lib, "Shlwapi.lib")
 
-struct ScopedSchema
-{
-    ScopedSchema()
-    {
-        clear();
-    }
-    ~ScopedSchema()
-    {
-        reset();
-    }
-    void reset()
-    {
-        for (size_t i = 0; i < schema.channels.nChannels; ++i)
-            free(const_cast<char*>(schema.channels.channels[i]));
-        free(schema.channels.channels);
-        for (size_t i = 0; i < schema.scenes.nScenes; ++i)
-        {
-            RemoteParameters& scene = schema.scenes.scenes[i];
-            free(const_cast<char*>(scene.name));
-            for (size_t j = 0; j < scene.nParameters; ++j)
-            {
-                RemoteParameter& parameter = scene.parameters[j];
-                free(const_cast<char*>(parameter.group));
-                free(const_cast<char*>(parameter.displayName));
-                free(const_cast<char*>(parameter.key));
-                if (parameter.type == RS_PARAMETER_TEXT)
-                    free(const_cast<char*>(parameter.defaults.text.defaultValue));
-                for (size_t k = 0; k < parameter.nOptions; ++k)
-                {
-                    free(const_cast<char*>(parameter.options[k]));
-                }
-                free(parameter.options);
-            }
-            free(scene.parameters);
-        }
-        free(schema.scenes.scenes);
-        clear();
-    }
-
-    ScopedSchema(const ScopedSchema&) = delete;
-    ScopedSchema(ScopedSchema&& other)
-    {
-        schema = std::move(other.schema);
-        other.reset();
-    }
-    ScopedSchema& operator=(const ScopedSchema&) = delete;
-    ScopedSchema& operator=(ScopedSchema&& other)
-    {
-        schema = std::move(other.schema);
-        other.reset();
-        return *this;
-    }
-
-    Schema schema;
-
-private:
-    void clear()
-    {
-        schema.channels.nChannels = 0;
-        schema.channels.channels = nullptr;
-        schema.scenes.nScenes = 0;
-        schema.scenes.scenes = nullptr;
-    }
-};
 
 // Load renderstream DLL from disguise software's install path
 HMODULE loadRenderStream()
@@ -260,6 +198,9 @@ int main(int argc, char** argv)
     }
 
     ScopedSchema scoped; // C++ helper that cleans up mallocs and strdups
+    scoped.schema.engineName = _strdup("Schema sample");
+    scoped.schema.engineVersion = _strdup(("RS" + std::to_string(RENDER_STREAM_VERSION_MAJOR) + "." + std::to_string(RENDER_STREAM_VERSION_MINOR)).c_str());
+    scoped.schema.info = _strdup("");
     scoped.schema.scenes.nScenes = 2;
     scoped.schema.scenes.scenes = static_cast<RemoteParameters*>(malloc(scoped.schema.scenes.nScenes * sizeof(RemoteParameters)));
     scoped.schema.scenes.scenes[0].name = _strdup("Strobe");
