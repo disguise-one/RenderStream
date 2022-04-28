@@ -7,6 +7,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <numeric>
 #include <windows.h>
 #include <shlwapi.h>
 #include <tchar.h>
@@ -124,7 +125,7 @@ const Schema* loadSchema(decltype(rs_loadSchema)* rs_loadSchema, const char* ass
     return reinterpret_cast<const Schema*>(schemaMem.data());
 }
 
-void addField(RemoteParameter& parameter, const std::string& key, const std::string& displayName, const std::string& group, float defaultValue, float min = 0, float max = 255, float step = 1, const std::vector<std::string>& options = {}, bool allowSequencing = true)
+void addField(RemoteParameter& parameter, const std::string& key, const std::string& displayName, const std::string& group, float defaultValue, float min = 0, float max = 255, float step = 1, const std::vector<std::string>& options = {}, bool allowSequencing = true, bool readOnly = false)
 {
     if (!options.empty())
     {
@@ -152,6 +153,8 @@ void addField(RemoteParameter& parameter, const std::string& key, const std::str
     parameter.flags = REMOTEPARAMETER_NO_FLAGS;
     if (!allowSequencing)
         parameter.flags |= REMOTEPARAMETER_NO_SEQUENCE;
+    if (readOnly)
+        parameter.flags |= REMOTEPARAMETER_READ_ONLY;
 }
 
 int main(int argc, char** argv)
@@ -204,13 +207,14 @@ int main(int argc, char** argv)
     scoped.schema.scenes.nScenes = 2;
     scoped.schema.scenes.scenes = static_cast<RemoteParameters*>(malloc(scoped.schema.scenes.nScenes * sizeof(RemoteParameters)));
     scoped.schema.scenes.scenes[0].name = _strdup("Strobe");
-    scoped.schema.scenes.scenes[0].nParameters = 5;
+    scoped.schema.scenes.scenes[0].nParameters = 6;
     scoped.schema.scenes.scenes[0].parameters = static_cast<RemoteParameter*>(malloc(scoped.schema.scenes.scenes[0].nParameters * sizeof(RemoteParameter)));
     addField(scoped.schema.scenes.scenes[0].parameters[0], "stable_shared_key_speed", "Strobe speed", "Shared properties", 1.f, 0.f, 4.f, 0.01f, {}, false);
     addField(scoped.schema.scenes.scenes[0].parameters[1], "stable_key_colour_r", "Colour R", "Strobe properties", 1.f, 0.f, 1.f, 0.001f);
     addField(scoped.schema.scenes.scenes[0].parameters[2], "stable_key_colour_g", "Colour G", "Strobe properties", 1.f, 0.f, 1.f, 0.001f);
     addField(scoped.schema.scenes.scenes[0].parameters[3], "stable_key_colour_b", "Colour B", "Strobe properties", 1.f, 0.f, 1.f, 0.001f);
     addField(scoped.schema.scenes.scenes[0].parameters[4], "stable_key_colour_a", "Colour A", "Strobe properties", 1.f, 0.f, 1.f, 0.001f);
+    addField(scoped.schema.scenes.scenes[0].parameters[5], "stable_key_strobe_ro", "Strobe", "Strobe properties", 1.f, 0.f, 1.f, 0.001f, {}, false, true);
     scoped.schema.scenes.scenes[1].name = _strdup("Radar");
     scoped.schema.scenes.scenes[1].nParameters = 3;
     scoped.schema.scenes.scenes[1].parameters = static_cast<RemoteParameter*>(malloc(scoped.schema.scenes.scenes[1].nParameters * sizeof(RemoteParameter)));
@@ -269,7 +273,19 @@ int main(int argc, char** argv)
         }
 
         const auto& scene = scoped.schema.scenes.scenes[frameData.scene];
-        std::vector<float> parameters(scene.nParameters);
+        const int numericalParameters = std::accumulate(scene.parameters, scene.parameters + scene.nParameters, 0, [](int count, const RemoteParameter& parameter) {
+            if (parameter.flags & REMOTEPARAMETER_READ_ONLY)
+                return count;
+            switch (parameter.type)
+            {
+                case RS_PARAMETER_NUMBER:
+                    return count + 1;
+                case RS_PARAMETER_POSE:
+                case RS_PARAMETER_TRANSFORM:
+                    return count + 16;
+            }
+        });
+        std::vector<float> parameters(numericalParameters);
         if (rs_getFrameParameters(scene.hash, parameters.data(), parameters.size() * sizeof(float)) != RS_ERROR_SUCCESS)
         {
             tcerr << "Failed to get frame parameters" << std::endl;
@@ -282,9 +298,9 @@ int main(int argc, char** argv)
         {
             const StreamDescription& description = header->streams[i];
 
-            CameraResponseData response;
-            response.tTracked = frameData.tTracked;
-            if (rs_getFrameCamera(description.handle, &response.camera) == RS_ERROR_SUCCESS)
+            CameraResponseData cameraData;
+            cameraData.tTracked = frameData.tTracked;
+            if (rs_getFrameCamera(description.handle, &cameraData.camera) == RS_ERROR_SUCCESS)
             {
                 if (description.format != RSPixelFormat::RS_FMT_BGRA8 && description.format != RSPixelFormat::RS_FMT_BGRX8)
                 {
@@ -297,6 +313,8 @@ int main(int argc, char** argv)
                 };
                 static_assert(sizeof(Colour) == 4, "32-bit Colour struct");
                 std::vector<Colour> pixels;
+                std::vector<float> outParameters;
+                std::vector<const char*> outTexts;
 
                 switch (frameData.scene)
                 {
@@ -315,6 +333,7 @@ int main(int argc, char** argv)
                             uint8_t(a * strobe * 255) 
                         };
                         pixels.resize(description.width * description.height, colour);
+                        outParameters.resize(1, float(strobe));
                         break;
                     }
                     case 1: // "Radar"
@@ -351,7 +370,16 @@ int main(int argc, char** argv)
                 data.cpu.stride = description.width * sizeof(Colour);
                 data.cpu.data = reinterpret_cast<uint8_t*>(pixels.data());
 
-                if (rs_sendFrame(description.handle, RS_FRAMETYPE_HOST_MEMORY, data, &response) != RS_ERROR_SUCCESS)
+                FrameResponseData response = {};
+                response.colourFrameType = RS_FRAMETYPE_HOST_MEMORY;
+                response.colourFrameData = data;
+                response.cameraData = &cameraData;
+                response.schemaHash = scene.hash;
+                response.parameterDataSize = uint32_t(outParameters.size() * sizeof(float));
+                response.parameterData = outParameters.data();
+                response.textDataCount = uint32_t(outTexts.size());
+                response.textData = outTexts.data();
+                if (rs_sendFrame(description.handle, response) != RS_ERROR_SUCCESS)
                 {
                     tcerr << "Failed to send frame" << std::endl;
                     rs_shutdown();
