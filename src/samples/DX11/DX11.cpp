@@ -379,9 +379,9 @@ int main()
         {
             const StreamDescription& description = header->streams[i];
 
-            CameraResponseData response;
-            response.tTracked = frameData.tTracked;
-            if (rs_getFrameCamera(description.handle, &response.camera) == RS_ERROR_SUCCESS)
+            CameraResponseData cameraData;
+            cameraData.tTracked = frameData.tTracked;
+            if (rs_getFrameCamera(description.handle, &cameraData.camera) == RS_ERROR_SUCCESS)
             {
                 const RenderTarget& target = renderTargets.at(description.handle);
                 context->OMSetRenderTargets(1, target.view.GetAddressOf(), nullptr);
@@ -402,25 +402,25 @@ int main()
                 const float angleRad = DirectX::XMConvertToRadians(angleDeg);
                 const DirectX::XMMATRIX world = DirectX::XMMatrixRotationRollPitchYaw(angleRad, angleRad, angleRad);
 
-                const float pitch = -DirectX::XMConvertToRadians(response.camera.rx);
-                const float yaw = DirectX::XMConvertToRadians(response.camera.ry);
-                const float roll = -DirectX::XMConvertToRadians(response.camera.rz);
+                const float pitch = -DirectX::XMConvertToRadians(cameraData.camera.rx);
+                const float yaw = DirectX::XMConvertToRadians(cameraData.camera.ry);
+                const float roll = -DirectX::XMConvertToRadians(cameraData.camera.rz);
 
-                const DirectX::XMMATRIX cameraTranslation = DirectX::XMMatrixTranslation(response.camera.x, response.camera.y, response.camera.z);
+                const DirectX::XMMATRIX cameraTranslation = DirectX::XMMatrixTranslation(cameraData.camera.x, cameraData.camera.y, cameraData.camera.z);
                 const DirectX::XMMATRIX cameraRotation = DirectX::XMMatrixRotationRollPitchYaw(pitch, yaw, roll);
                 const DirectX::XMMATRIX view = DirectX::XMMatrixInverse(nullptr, cameraTranslation) * DirectX::XMMatrixTranspose(cameraRotation);
 
-                const float throwRatioH = response.camera.focalLength / response.camera.sensorX;
-                const float throwRatioV = response.camera.focalLength / response.camera.sensorY;
+                const float throwRatioH = cameraData.camera.focalLength / cameraData.camera.sensorX;
+                const float throwRatioV = cameraData.camera.focalLength / cameraData.camera.sensorY;
                 const float fovH = 2.0f * atan(0.5f / throwRatioH);
                 const float fovV = 2.0f * atan(0.5f / throwRatioV);
 
-                const bool orthographic = response.camera.orthoWidth > 0.0f;
-                const float cameraAspect = response.camera.sensorX / response.camera.sensorY;
+                const bool orthographic = cameraData.camera.orthoWidth > 0.0f;
+                const float cameraAspect = cameraData.camera.sensorX / cameraData.camera.sensorY;
                 float imageHeight, imageWidth;
                 if (orthographic)
                 {
-                    imageHeight = response.camera.orthoWidth / cameraAspect;
+                    imageHeight = cameraData.camera.orthoWidth / cameraAspect;
                     imageWidth = cameraAspect * imageHeight;
                 }
                 else
@@ -429,10 +429,10 @@ int main()
                     imageHeight = 2.0f * tan(0.5f * fovV);
                 }
 
-                const DirectX::XMMATRIX overscan = DirectX::XMMatrixTranslation(response.camera.cx, response.camera.cy, 0.f);
+                const DirectX::XMMATRIX overscan = DirectX::XMMatrixTranslation(cameraData.camera.cx, cameraData.camera.cy, 0.f);
 
-                const float nearZ = response.camera.nearZ;
-                const float farZ = response.camera.farZ;
+                const float nearZ = cameraData.camera.nearZ;
+                const float farZ = cameraData.camera.farZ;
 
                 const float l = (-0.5f + description.clipping.left) * imageWidth;
                 const float r = (-0.5f + description.clipping.right) * imageWidth;
@@ -461,9 +461,11 @@ int main()
                     startIndex += indexCount;
                 }
 
-                SenderFrameTypeData data;
-                data.dx11.resource = target.texture.Get();
-                if (rs_sendFrame(description.handle, RS_FRAMETYPE_DX11_TEXTURE, data, &response) != RS_ERROR_SUCCESS)
+                FrameResponseData response = {};
+                response.colourFrameType = RS_FRAMETYPE_DX11_TEXTURE;
+                response.colourFrameData.dx11.resource = target.texture.Get();
+                response.cameraData = &cameraData;
+                if (rs_sendFrame(description.handle, response) != RS_ERROR_SUCCESS)
                 {
                     LOG("Failed to send frame");
                     rs_shutdown();

@@ -160,9 +160,9 @@ int main()
         {
             const StreamDescription& description = header->streams[i];
 
-            CameraResponseData response;
-            response.tTracked = frameData.tTracked;
-            if (rs_getFrameCamera(description.handle, &response.camera) == RS_ERROR_SUCCESS)
+            CameraResponseData cameraData;
+            cameraData.tTracked = frameData.tTracked;
+            if (rs_getFrameCamera(description.handle, &cameraData.camera) == RS_ERROR_SUCCESS)
             {
                 const float strobe = float(abs(1.0 - fmod(frameData.tTracked, 2.0)));
                 std::vector<uint8_t> pixel;
@@ -208,7 +208,11 @@ int main()
 
                 data.cpu.data = pixels.data();
 
-                if (rs_sendFrame(description.handle, RS_FRAMETYPE_HOST_MEMORY, data, &response) != RS_ERROR_SUCCESS)
+                FrameResponseData response = {};
+                response.colourFrameType = RS_FRAMETYPE_HOST_MEMORY;
+                response.colourFrameData = data;
+                response.cameraData = &cameraData;
+                if (rs_sendFrame(description.handle, response) != RS_ERROR_SUCCESS)
                 {
                     tcerr << "Failed to send frame" << std::endl;
                     rs_shutdown();

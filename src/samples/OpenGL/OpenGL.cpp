@@ -485,9 +485,9 @@ int main()
         {
             const StreamDescription& description = header->streams[i];
 
-            CameraResponseData response;
-            response.tTracked = frameData.tTracked;
-            if (rs_getFrameCamera(description.handle, &response.camera) == RS_ERROR_SUCCESS)
+            CameraResponseData cameraData;
+            cameraData.tTracked = frameData.tTracked;
+            if (rs_getFrameCamera(description.handle, &cameraData.camera) == RS_ERROR_SUCCESS)
             {
                 const RenderTarget& target = renderTargets.at(description.handle);
                 glBindFramebuffer(GL_FRAMEBUFFER, target.frameBuffer);
@@ -499,25 +499,25 @@ int main()
 
                 const glm::mat4 world = glm::identity<glm::mat4>();
 
-                const float pitch = glm::radians(response.camera.rx);
-                const float yaw = glm::radians(response.camera.ry);
-                const float roll = glm::radians(response.camera.rz);
+                const float pitch = glm::radians(cameraData.camera.rx);
+                const float yaw = glm::radians(cameraData.camera.ry);
+                const float roll = glm::radians(cameraData.camera.rz);
 
-                const glm::mat4 cameraTranslation = glm::translate(glm::identity<glm::mat4>(), glm::vec3(response.camera.x, -response.camera.y, response.camera.z));
+                const glm::mat4 cameraTranslation = glm::translate(glm::identity<glm::mat4>(), glm::vec3(cameraData.camera.x, -cameraData.camera.y, cameraData.camera.z));
                 const glm::mat4 cameraRotation = glm::eulerAngleYXZ(yaw, pitch, roll);
                 const glm::mat4 view = glm::transpose(cameraRotation) * glm::inverse(cameraTranslation);
 
-                const float throwRatioH = response.camera.focalLength / response.camera.sensorX;
-                const float throwRatioV = response.camera.focalLength / response.camera.sensorY;
+                const float throwRatioH = cameraData.camera.focalLength / cameraData.camera.sensorX;
+                const float throwRatioV = cameraData.camera.focalLength / cameraData.camera.sensorY;
                 const float fovH = 2.0f * atan(0.5f / throwRatioH);
                 const float fovV = 2.0f * atan(0.5f / throwRatioV);
 
-                const bool orthographic = response.camera.orthoWidth > 0.0f;
-                const float cameraAspect = response.camera.sensorX / response.camera.sensorY;
+                const bool orthographic = cameraData.camera.orthoWidth > 0.0f;
+                const float cameraAspect = cameraData.camera.sensorX / cameraData.camera.sensorY;
                 float imageHeight, imageWidth;
                 if (orthographic)
                 {
-                    imageHeight = response.camera.orthoWidth / cameraAspect;
+                    imageHeight = cameraData.camera.orthoWidth / cameraAspect;
                     imageWidth = cameraAspect * imageHeight;
                 }
                 else
@@ -526,10 +526,10 @@ int main()
                     imageHeight = 2.0f * tan(0.5f * fovV);
                 }
 
-                const glm::mat4 overscan = glm::translate(glm::identity<glm::mat4>(), glm::vec3(response.camera.cx, response.camera.cy, 0.f));
+                const glm::mat4 overscan = glm::translate(glm::identity<glm::mat4>(), glm::vec3(cameraData.camera.cx, cameraData.camera.cy, 0.f));
 
-                const float nearZ = response.camera.nearZ;
-                const float farZ = response.camera.farZ;
+                const float nearZ = cameraData.camera.nearZ;
+                const float farZ = cameraData.camera.farZ;
 
                 const float l = (-0.5f + description.clipping.left) * imageWidth;
                 const float r = (-0.5f + description.clipping.right) * imageWidth;
@@ -555,9 +555,11 @@ int main()
 
                 glFinish();
 
-                SenderFrameTypeData data;
-                data.gl.texture = target.texture;
-                if (rs_sendFrame(description.handle, RS_FRAMETYPE_OPENGL_TEXTURE, data, &response) != RS_ERROR_SUCCESS)
+                FrameResponseData response = {};
+                response.colourFrameType = RS_FRAMETYPE_OPENGL_TEXTURE;
+                response.colourFrameData.gl.texture = target.texture;
+                response.cameraData = &cameraData;
+                if (rs_sendFrame(description.handle, response) != RS_ERROR_SUCCESS)
                 {
                     tcerr << "Failed to send frame" << std::endl;
                     rs_shutdown();

@@ -13,7 +13,7 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{5ecb2292-a7a8-4c74-b766-efba1175b302}</ProjectGuid>
+    <ProjectGuid>{72F375CE-D084-4CFF-8D53-834557F066A3}</ProjectGuid>
     <RootNamespace>Textures</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>

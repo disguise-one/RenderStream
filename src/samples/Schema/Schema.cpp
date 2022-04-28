@@ -284,6 +284,7 @@ int main(int argc, char** argv)
                 case RS_PARAMETER_TRANSFORM:
                     return count + 16;
             }
+            return count;
         });
         std::vector<float> parameters(numericalParameters);
         if (rs_getFrameParameters(scene.hash, parameters.data(), parameters.size() * sizeof(float)) != RS_ERROR_SUCCESS)
