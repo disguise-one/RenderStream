@@ -685,11 +685,12 @@ int main()
                 ID3D12CommandList* ppCommandLists[] = { commandList.Get() };
                 commandQueue->ExecuteCommandLists(1, ppCommandLists);
 
+                SenderFrameTypeData data;
+                data.dx12.resource = target.texture.Get();
+
                 FrameResponseData response = {};
-                response.colourFrameType = RS_FRAMETYPE_DX12_TEXTURE;
-                response.colourFrameData.dx12.resource = target.texture.Get();
                 response.cameraData = &cameraData;
-                if (rs_sendFrame(description.handle, response) != RS_ERROR_SUCCESS)
+                if (rs_sendFrame(description.handle, RS_FRAMETYPE_DX12_TEXTURE, data, &response) != RS_ERROR_SUCCESS)
                 {
                     LOG("Failed to send frame");
                     rs_shutdown();

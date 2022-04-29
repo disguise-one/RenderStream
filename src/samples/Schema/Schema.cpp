@@ -372,15 +372,13 @@ int main(int argc, char** argv)
                 data.cpu.data = reinterpret_cast<uint8_t*>(pixels.data());
 
                 FrameResponseData response = {};
-                response.colourFrameType = RS_FRAMETYPE_HOST_MEMORY;
-                response.colourFrameData = data;
                 response.cameraData = &cameraData;
                 response.schemaHash = scene.hash;
                 response.parameterDataSize = uint32_t(outParameters.size() * sizeof(float));
                 response.parameterData = outParameters.data();
                 response.textDataCount = uint32_t(outTexts.size());
                 response.textData = outTexts.data();
-                if (rs_sendFrame(description.handle, response) != RS_ERROR_SUCCESS)
+                if (rs_sendFrame(description.handle, RS_FRAMETYPE_HOST_MEMORY, data, &response) != RS_ERROR_SUCCESS)
                 {
                     tcerr << "Failed to send frame" << std::endl;
                     rs_shutdown();

@@ -209,10 +209,8 @@ int main()
                 data.cpu.data = pixels.data();
 
                 FrameResponseData response = {};
-                response.colourFrameType = RS_FRAMETYPE_HOST_MEMORY;
-                response.colourFrameData = data;
                 response.cameraData = &cameraData;
-                if (rs_sendFrame(description.handle, response) != RS_ERROR_SUCCESS)
+                if (rs_sendFrame(description.handle, RS_FRAMETYPE_HOST_MEMORY, data, &response) != RS_ERROR_SUCCESS)
                 {
                     tcerr << "Failed to send frame" << std::endl;
                     rs_shutdown();

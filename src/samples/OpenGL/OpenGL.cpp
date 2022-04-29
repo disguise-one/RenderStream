@@ -555,11 +555,12 @@ int main()
 
                 glFinish();
 
+                SenderFrameTypeData data;
+                data.gl.texture = target.texture;
+
                 FrameResponseData response = {};
-                response.colourFrameType = RS_FRAMETYPE_OPENGL_TEXTURE;
-                response.colourFrameData.gl.texture = target.texture;
                 response.cameraData = &cameraData;
-                if (rs_sendFrame(description.handle, response) != RS_ERROR_SUCCESS)
+                if (rs_sendFrame(description.handle, RS_FRAMETYPE_OPENGL_TEXTURE, data, &response) != RS_ERROR_SUCCESS)
                 {
                     tcerr << "Failed to send frame" << std::endl;
                     rs_shutdown();

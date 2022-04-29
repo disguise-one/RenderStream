@@ -647,11 +647,12 @@ int main(int argc, char** argv)
                     startIndex += indexCount;
                 }
 
+                SenderFrameTypeData data;
+                data.dx11.resource = target.texture.Get();
+
                 FrameResponseData response = {};
-                response.colourFrameType = RS_FRAMETYPE_DX11_TEXTURE;
-                response.colourFrameData.dx11.resource = target.texture.Get();
                 response.cameraData = &cameraData;
-                if (rs_sendFrame(description.handle, response) != RS_ERROR_SUCCESS)
+                if (rs_sendFrame(description.handle, RS_FRAMETYPE_DX11_TEXTURE, data, &response) != RS_ERROR_SUCCESS)
                 {
                     tcerr << "Failed to send frame" << std::endl;
                     rs_shutdown();

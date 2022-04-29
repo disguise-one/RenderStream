@@ -169,6 +169,11 @@ typedef struct
     uint64_t waitSemaphoreValue;
     VkSemaphore signalSemaphore;
     uint64_t signalSemaphoreValue;
+} VulkanDataStructure;
+
+typedef struct
+{
+    VulkanDataStructure* image;
 } VulkanData;
 
 typedef union
@@ -336,9 +341,7 @@ enum UseDX12SharedHeapFlag
 
 typedef struct
 {
-    SenderFrameType colourFrameType;
-    SenderFrameTypeData colourFrameData;
-    CameraResponseData* cameraData;
+    const CameraResponseData* cameraData;
     uint64_t schemaHash;
     uint32_t parameterDataSize;
     void* parameterData;
@@ -386,7 +389,7 @@ extern "C" D3_RENDER_STREAM_API RS_ERROR rs_getFrameImage(int64_t imageId, Sende
 extern "C" D3_RENDER_STREAM_API RS_ERROR rs_getFrameText(uint64_t schemaHash, uint32_t textParamIndex, /*Out*/const char** outTextPtr); // // returns the remote text data (pointer only valid until next rs_awaitFrameData)
 
 extern "C" D3_RENDER_STREAM_API RS_ERROR rs_getFrameCamera(StreamHandle streamHandle, /*Out*/CameraData* outCameraData);  // returns the CameraData for this stream, or RS_ERROR_NOTFOUND if no camera data is available for this stream on this frame
-extern "C" D3_RENDER_STREAM_API RS_ERROR rs_sendFrame(StreamHandle streamHandle, FrameResponseData frameData); // publish a frame which was generated from the associated tracking and timing information.
+extern "C" D3_RENDER_STREAM_API RS_ERROR rs_sendFrame(StreamHandle streamHandle, SenderFrameType frameType, SenderFrameTypeData data, const FrameResponseData* frameData); // publish a frame which was generated from the associated tracking and timing information.
 
 extern "C" D3_RENDER_STREAM_API RS_ERROR rs_releaseImage(SenderFrameType frameType, SenderFrameTypeData data); // release any references to image (e.g. before deletion)
 

@@ -1193,22 +1193,23 @@ int main()
                 submitInfo.pSignalSemaphores = &target.semaphore;
                 vkQueueSubmit(queue, 1, &submitInfo, target.fence);
 
+                VulkanDataStructure imageData;
+                imageData.memory = target.mem;
+                imageData.size = target.offset + target.size;
+                imageData.format = description.format;
+                imageData.width = description.width;
+                imageData.height = description.height;
+                imageData.waitSemaphore = target.semaphore;
+                imageData.waitSemaphoreValue = target.semaphoreValue;
+                imageData.signalSemaphore = target.semaphore;
+                imageData.signalSemaphoreValue = ++target.semaphoreValue;
+
                 SenderFrameTypeData data;
-                data.vk.memory = target.mem;
-                data.vk.size = target.offset + target.size;
-                data.vk.format = description.format;
-                data.vk.width = description.width;
-                data.vk.height = description.height;
-                data.vk.waitSemaphore = target.semaphore;
-                data.vk.waitSemaphoreValue = target.semaphoreValue;
-                data.vk.signalSemaphore = target.semaphore;
-                data.vk.signalSemaphoreValue = ++target.semaphoreValue;
+                data.vk.image = &imageData;
 
                 FrameResponseData response = {};
-                response.colourFrameType = RS_FRAMETYPE_VULKAN_TEXTURE;
-                response.colourFrameData = data;
                 response.cameraData = &cameraData;
-                if (rs_sendFrame(description.handle, response) != RS_ERROR_SUCCESS)
+                if (rs_sendFrame(description.handle, RS_FRAMETYPE_VULKAN_TEXTURE, data, &response) != RS_ERROR_SUCCESS)
                 {
                     LOG("Failed to send frame");
                     rs_shutdown();
