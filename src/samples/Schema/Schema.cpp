@@ -182,7 +182,7 @@ int main(int argc, char** argv)
     LOAD_FN(rs_awaitFrameData);
     LOAD_FN(rs_getFrameParameters);
     LOAD_FN(rs_getFrameCamera);
-    LOAD_FN(rs_sendFrame);
+    LOAD_FN(rs_sendFrame2);
     LOAD_FN(rs_shutdown);
 
     if (rs_initialise(RENDER_STREAM_VERSION_MAJOR, RENDER_STREAM_VERSION_MINOR) != RS_ERROR_SUCCESS || rs_initialiseGpGpuWithoutInterop(nullptr) != RS_ERROR_SUCCESS)
@@ -367,9 +367,11 @@ int main(int argc, char** argv)
                     }
                 }
 
-                SenderFrameTypeData data;
+                SenderFrame data;
+                data.type = RS_FRAMETYPE_HOST_MEMORY;
                 data.cpu.stride = description.width * sizeof(Colour);
                 data.cpu.data = reinterpret_cast<uint8_t*>(pixels.data());
+                data.cpu.format = RS_FMT_BGRA8;
 
                 FrameResponseData response = {};
                 response.cameraData = &cameraData;
@@ -378,7 +380,7 @@ int main(int argc, char** argv)
                 response.parameterData = outParameters.data();
                 response.textDataCount = uint32_t(outTexts.size());
                 response.textData = outTexts.data();
-                if (rs_sendFrame(description.handle, RS_FRAMETYPE_HOST_MEMORY, data, &response) != RS_ERROR_SUCCESS)
+                if (rs_sendFrame2(description.handle, &data, &response) != RS_ERROR_SUCCESS)
                 {
                     tcerr << "Failed to send frame" << std::endl;
                     rs_shutdown();

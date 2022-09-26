@@ -262,10 +262,10 @@ int main(int argc, char** argv)
     LOAD_FN(rs_awaitFrameData);
     LOAD_FN(rs_getFrameParameters);
     LOAD_FN(rs_getFrameImageData);
-    LOAD_FN(rs_getFrameImage);
+    LOAD_FN(rs_getFrameImage2);
     LOAD_FN(rs_getFrameText);
     LOAD_FN(rs_getFrameCamera);
-    LOAD_FN(rs_sendFrame);
+    LOAD_FN(rs_sendFrame2);
     LOAD_FN(rs_shutdown);
     LOAD_FN(rs_setNewStatusMessage);
 
@@ -531,9 +531,10 @@ int main(int argc, char** argv)
         {
             texture = createTexture(device.Get(), image);
         }
-        SenderFrameTypeData data;
+        SenderFrame data;
+        data.type = RS_FRAMETYPE_DX11_TEXTURE;
         data.dx11.resource = texture.resource.Get();
-        if (rs_getFrameImage(image.imageId, RS_FRAMETYPE_DX11_TEXTURE, data) != RS_ERROR_SUCCESS)
+        if (rs_getFrameImage2(image.imageId, &data) != RS_ERROR_SUCCESS)
         {
             tcerr << "Failed to get image parameter" << std::endl;
             continue;
@@ -647,12 +648,13 @@ int main(int argc, char** argv)
                     startIndex += indexCount;
                 }
 
-                SenderFrameTypeData data;
+                SenderFrame data;
+                data.type = RS_FRAMETYPE_DX11_TEXTURE;
                 data.dx11.resource = target.texture.Get();
 
                 FrameResponseData response = {};
                 response.cameraData = &cameraData;
-                if (rs_sendFrame(description.handle, RS_FRAMETYPE_DX11_TEXTURE, data, &response) != RS_ERROR_SUCCESS)
+                if (rs_sendFrame2(description.handle, &data, &response) != RS_ERROR_SUCCESS)
                 {
                     tcerr << "Failed to send frame" << std::endl;
                     rs_shutdown();

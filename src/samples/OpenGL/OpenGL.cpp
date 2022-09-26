@@ -56,7 +56,7 @@ HMODULE loadRenderStream()
         return nullptr;
     }
 
-    if (_tcscat_s(buffer, bufferSize, TEXT("\\d3renderstream.dll")) != 0)
+    if (_tcscat_s(buffer, TEXT("\\d3renderstream.dll")) != 0)
     {
         tcerr << "Failed to append filename to path: " << buffer << std::endl;
         return nullptr;
@@ -226,7 +226,7 @@ int main()
     LOAD_FN(rs_getStreams);
     LOAD_FN(rs_awaitFrameData);
     LOAD_FN(rs_getFrameCamera);
-    LOAD_FN(rs_sendFrame);
+    LOAD_FN(rs_sendFrame2);
     LOAD_FN(rs_shutdown);
 
     if (rs_initialise(RENDER_STREAM_VERSION_MAJOR, RENDER_STREAM_VERSION_MINOR) != RS_ERROR_SUCCESS)
@@ -555,12 +555,13 @@ int main()
 
                 glFinish();
 
-                SenderFrameTypeData data;
+                SenderFrame data;
+                data.type = RS_FRAMETYPE_OPENGL_TEXTURE;
                 data.gl.texture = target.texture;
 
                 FrameResponseData response = {};
                 response.cameraData = &cameraData;
-                if (rs_sendFrame(description.handle, RS_FRAMETYPE_OPENGL_TEXTURE, data, &response) != RS_ERROR_SUCCESS)
+                if (rs_sendFrame2(description.handle, &data, &response) != RS_ERROR_SUCCESS)
                 {
                     tcerr << "Failed to send frame" << std::endl;
                     rs_shutdown();

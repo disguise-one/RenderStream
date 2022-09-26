@@ -268,7 +268,7 @@ int main()
     LOAD_FN(rs_getStreams);
     LOAD_FN(rs_awaitFrameData);
     LOAD_FN(rs_getFrameCamera);
-    LOAD_FN(rs_sendFrame);
+    LOAD_FN(rs_sendFrame2);
     LOAD_FN(rs_shutdown);
     _rs_logToD3 = reinterpret_cast<decltype(_rs_logToD3)>(GetProcAddress(hLib, "rs_logToD3"));
 
@@ -685,12 +685,13 @@ int main()
                 ID3D12CommandList* ppCommandLists[] = { commandList.Get() };
                 commandQueue->ExecuteCommandLists(1, ppCommandLists);
 
-                SenderFrameTypeData data;
+                SenderFrame data;
+                data.type = RS_FRAMETYPE_DX12_TEXTURE;
                 data.dx12.resource = target.texture.Get();
 
                 FrameResponseData response = {};
                 response.cameraData = &cameraData;
-                if (rs_sendFrame(description.handle, RS_FRAMETYPE_DX12_TEXTURE, data, &response) != RS_ERROR_SUCCESS)
+                if (rs_sendFrame2(description.handle, &data, &response) != RS_ERROR_SUCCESS)
                 {
                     LOG("Failed to send frame");
                     rs_shutdown();
