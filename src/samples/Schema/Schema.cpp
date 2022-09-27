@@ -2,18 +2,9 @@
 //
 // Usage: Compile, copy the executable into your RenderStream Projects folder and launch via d3
 
-#define WIN32_LEAN_AND_MEAN
-
-#include <iostream>
-#include <vector>
-#include <string>
-#include <numeric>
-#include <windows.h>
-#include <shlwapi.h>
 #include <tchar.h>
 
-#include "../../include/d3renderstream.h"
-#include "../../include/d3helpers.hpp"
+#include "../../include/renderstream.hpp"
 
 #if defined(UNICODE) || defined(_UNICODE)
 #define tcout std::wcout
@@ -22,108 +13,6 @@
 #define tcout std::cout
 #define tcerr std::cerr
 #endif
-
-#pragma comment(lib, "Shlwapi.lib")
-
-
-// Load renderstream DLL from disguise software's install path
-HMODULE loadRenderStream()
-{
-    HKEY hKey;
-    if (FAILED(RegOpenKeyEx(HKEY_CURRENT_USER, TEXT("Software\\d3 Technologies\\d3 Production Suite"), 0, KEY_READ, &hKey)))
-    {
-        tcerr << "Failed to open 'Software\\d3 Technologies\\d3 Production Suite' registry key" << std::endl;
-        return nullptr;
-    }
-
-    TCHAR buffer[512];
-    DWORD bufferSize = sizeof(buffer);
-    if (FAILED(RegQueryValueEx(hKey, TEXT("exe path"), 0, nullptr, reinterpret_cast<LPBYTE>(buffer), &bufferSize)))
-    {
-        tcerr << "Failed to query value of 'exe path'" << std::endl;
-        return nullptr;
-    }
-
-    if (!PathRemoveFileSpec(buffer))
-    {
-        tcerr << "Failed to remove file spec from path: " << buffer << std::endl;
-        return nullptr;
-    }
-
-    if (_tcscat_s(buffer, bufferSize, TEXT("\\d3renderstream.dll")) != 0)
-    {
-        tcerr << "Failed to append filename to path: " << buffer << std::endl;
-        return nullptr;
-    }
-
-    HMODULE hLib = ::LoadLibraryEx(buffer, NULL, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_APPLICATION_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32 | LOAD_LIBRARY_SEARCH_USER_DIRS);
-    if (!hLib)
-    {
-        tcerr << "Failed to load dll: " << buffer << std::endl;
-        return nullptr;
-    }
-    return hLib;
-}
-
-// Get streams into (descMem) buffer and return a pointer into it
-const StreamDescriptions* getStreams(decltype(rs_getStreams)* rs_getStreams, std::vector<uint8_t>& descMem)
-{
-    uint32_t nBytes = 0;
-    rs_getStreams(nullptr, &nBytes);
-
-    const static int MAX_TRIES = 3;
-    int iterations = 0;
-
-    RS_ERROR res = RS_ERROR_BUFFER_OVERFLOW;
-    do
-    {
-        descMem.resize(nBytes);
-        res = rs_getStreams(reinterpret_cast<StreamDescriptions*>(descMem.data()), &nBytes);
-
-        if (res == RS_ERROR_SUCCESS)
-            break;
-
-        ++iterations;
-    } while (res == RS_ERROR_BUFFER_OVERFLOW && iterations < MAX_TRIES);
-
-    if (res != RS_ERROR_SUCCESS)
-        throw std::runtime_error("Failed to get streams");
-
-    if (nBytes < sizeof(StreamDescriptions))
-        throw std::runtime_error("Invalid stream descriptions");
-
-    return reinterpret_cast<const StreamDescriptions*>(descMem.data());
-}
-
-// Load schema into (schemaMem) buffer and return a pointer into it
-const Schema* loadSchema(decltype(rs_loadSchema)* rs_loadSchema, const char* assetPath, std::vector<uint8_t>& schemaMem)
-{
-    uint32_t nBytes = 0;
-    rs_loadSchema(assetPath, nullptr, &nBytes);
-
-    const static int MAX_TRIES = 3;
-    int iterations = 0;
-
-    RS_ERROR res = RS_ERROR_BUFFER_OVERFLOW;
-    do
-    {
-        schemaMem.resize(nBytes);
-        res = rs_loadSchema(assetPath, reinterpret_cast<Schema*>(schemaMem.data()), &nBytes);
-
-        if (res == RS_ERROR_SUCCESS)
-            break;
-
-        ++iterations;
-    } while (res == RS_ERROR_BUFFER_OVERFLOW && iterations < MAX_TRIES);
-
-    if (res != RS_ERROR_SUCCESS)
-        throw std::runtime_error("Failed to load schema");
-
-    if (nBytes < sizeof(Schema))
-        throw std::runtime_error("Invalid schema");
-
-    return reinterpret_cast<const Schema*>(schemaMem.data());
-}
 
 void addField(RemoteParameter& parameter, const std::string& key, const std::string& displayName, const std::string& group, float defaultValue, float min = 0, float max = 255, float step = 1, const std::vector<std::string>& options = {}, bool allowSequencing = true, bool readOnly = false)
 {
@@ -157,45 +46,17 @@ void addField(RemoteParameter& parameter, const std::string& key, const std::str
         parameter.flags |= REMOTEPARAMETER_READ_ONLY;
 }
 
-int main(int argc, char** argv)
+int mainImpl(int argc, char** argv)
 {
-    HMODULE hLib = loadRenderStream();
-    if (!hLib)
-    {
-    tcerr << "Failed to load RenderStream DLL" << std::endl;
-    return 1;
-    }
+    RenderStream rs;
 
-#define LOAD_FN(FUNC_NAME) \
-    decltype(FUNC_NAME)* FUNC_NAME = reinterpret_cast<decltype(FUNC_NAME)>(GetProcAddress(hLib, #FUNC_NAME)); \
-    if (!FUNC_NAME) { \
-        tcerr << "Failed to get function " #FUNC_NAME " from DLL" << std::endl; \
-        return 2; \
-    }
-
-    LOAD_FN(rs_initialise);
-    LOAD_FN(rs_initialiseGpGpuWithoutInterop);
-    LOAD_FN(rs_saveSchema);
-    LOAD_FN(rs_loadSchema);
-    LOAD_FN(rs_setSchema);
-    LOAD_FN(rs_getStreams);
-    LOAD_FN(rs_awaitFrameData);
-    LOAD_FN(rs_getFrameParameters);
-    LOAD_FN(rs_getFrameCamera);
-    LOAD_FN(rs_sendFrame);
-    LOAD_FN(rs_shutdown);
-
-    if (rs_initialise(RENDER_STREAM_VERSION_MAJOR, RENDER_STREAM_VERSION_MINOR) != RS_ERROR_SUCCESS || rs_initialiseGpGpuWithoutInterop(nullptr) != RS_ERROR_SUCCESS)
-    {
-        tcerr << "Failed to initialise RenderStream" << std::endl;
-        return 3;
-    }
+    rs.initialise();
+    rs.initialiseGpGpuWithoutInterop();
 
     {
         // Loading a schema from disk is useful if some parts of it cannot be generated during runtime (ie. it is exported from an editor) 
         // or if you want it to be user-editable
-        std::vector<uint8_t> schemaMem;
-        const Schema* schema = loadSchema(rs_loadSchema, argv[0], schemaMem);
+        const Schema* schema = rs.loadSchema(argv[0]);
         if (schema && schema->scenes.nScenes > 0)
             tcout << "A schema existed on disk" << std::endl;
     }
@@ -221,77 +82,45 @@ int main(int argc, char** argv)
     addField(scoped.schema.scenes.scenes[1].parameters[0], "stable_shared_key_speed", "Radar speed", "Shared properties", 1.f, 0.f, 4.f, 0.01f, {}, false);
     addField(scoped.schema.scenes.scenes[1].parameters[1], "stable_key_length", "Length", "Radar properties", 0.25f, 0.f, 1.f, 0.01f);
     addField(scoped.schema.scenes.scenes[1].parameters[2], "stable_key_direction", "Direction", "Radar properties", 1, 0, 1, 1, { "Left", "Right" });
-    if (rs_setSchema(&scoped.schema) != RS_ERROR_SUCCESS)
-    {
-        tcerr << "Failed to set schema" << std::endl;
-        return 4;
-    }
+    rs.setSchema(&scoped.schema);
 
     // Saving the schema to disk makes the remote parameters available in d3's UI before the application is launched
-    if (rs_saveSchema(argv[0], &scoped.schema) != RS_ERROR_SUCCESS)
-    {
-        tcerr << "Failed to save schema" << std::endl;
-        return 41;
-    }
+    rs.saveSchema(argv[0], &scoped.schema);
 
-    std::vector<uint8_t> descMem;
     const StreamDescriptions* header = nullptr;
-    FrameData frameData;
     while (true)
     {
         // Wait for a frame request
-        RS_ERROR err = rs_awaitFrameData(5000, &frameData);
-        if (err == RS_ERROR_STREAMS_CHANGED)
+        auto awaitResult = rs.awaitFrameData(5000);
+        if (std::holds_alternative<RS_ERROR>(awaitResult))
         {
-            try
+            RS_ERROR err = std::get<RS_ERROR>(awaitResult);
+            if (err == RS_ERROR_STREAMS_CHANGED)
             {
-                header = getStreams(rs_getStreams, descMem);
+                header = rs.getStreams();
+                tcout << "Found " << (header ? header->nStreams : 0) << " streams" << std::endl;
+                continue;
             }
-            catch (const std::exception& e)
+            else if (err == RS_ERROR_TIMEOUT)
             {
-                tcerr << e.what() << std::endl;
-                rs_shutdown();
-                return 5;
+                continue;
             }
-            tcout << "Found " << (header ? header->nStreams : 0) << " streams" << std::endl;
-            continue;
-        }
-        else if (err == RS_ERROR_TIMEOUT)
-        {
-            continue;
-        }
-        else if (err != RS_ERROR_SUCCESS)
-        {
-            tcerr << "rs_awaitFrameData returned " << err << std::endl;
-            break;
+            else if (err != RS_ERROR_SUCCESS)
+            {
+                tcerr << "rs_awaitFrameData returned " << err << std::endl;
+                break;
+            }
         }
 
+        const FrameData& frameData = std::get<FrameData>(awaitResult);
         if (frameData.scene >= scoped.schema.scenes.nScenes)
         {
             tcerr << "Scene out of bounds" << std::endl;
             continue;
         }
 
-        const auto& scene = scoped.schema.scenes.scenes[frameData.scene];
-        const int numericalParameters = std::accumulate(scene.parameters, scene.parameters + scene.nParameters, 0, [](int count, const RemoteParameter& parameter) {
-            if (parameter.flags & REMOTEPARAMETER_READ_ONLY)
-                return count;
-            switch (parameter.type)
-            {
-                case RS_PARAMETER_NUMBER:
-                    return count + 1;
-                case RS_PARAMETER_POSE:
-                case RS_PARAMETER_TRANSFORM:
-                    return count + 16;
-            }
-            return count;
-        });
-        std::vector<float> parameters(numericalParameters);
-        if (rs_getFrameParameters(scene.hash, parameters.data(), parameters.size() * sizeof(float)) != RS_ERROR_SUCCESS)
-        {
-            tcerr << "Failed to get frame parameters" << std::endl;
-            continue;
-        }
+        const RemoteParameters& scene = scoped.schema.scenes.scenes[frameData.scene];
+        ParameterValues values = rs.getFrameParameters(scene);
 
         // Respond to frame request
         const size_t numStreams = header ? header->nStreams : 0;
@@ -301,7 +130,17 @@ int main(int argc, char** argv)
 
             CameraResponseData cameraData;
             cameraData.tTracked = frameData.tTracked;
-            if (rs_getFrameCamera(description.handle, &cameraData.camera) == RS_ERROR_SUCCESS)
+            try
+            {
+                cameraData.camera = rs.getFrameCamera(description.handle);
+            }
+            catch (const RenderStreamError& e)
+            {
+                if (e.error == RS_ERROR_NOTFOUND)
+                    continue;
+                throw;
+            }
+
             {
                 if (description.format != RSPixelFormat::RS_FMT_BGRA8 && description.format != RSPixelFormat::RS_FMT_BGRX8)
                 {
@@ -321,11 +160,11 @@ int main(int argc, char** argv)
                 {
                     case 0: // "Strobe"
                     {
-                        const float speed = parameters[0];
-                        const float r = parameters[1];
-                        const float g = parameters[2];
-                        const float b = parameters[3];
-                        const float a = parameters[4];
+                        const float speed = values.get<float>("stable_shared_key_speed");
+                        const float r = values.get<float>("stable_key_colour_r");
+                        const float g = values.get<float>("stable_key_colour_g");
+                        const float b = values.get<float>("stable_key_colour_b");
+                        const float a = values.get<float>("stable_key_colour_a");
                         const double strobe = abs(1.0 - fmod(frameData.tTracked * speed, 2.0));
                         const Colour colour = { 
                             uint8_t(b * strobe * 255), 
@@ -339,9 +178,9 @@ int main(int argc, char** argv)
                     }
                     case 1: // "Radar"
                     {
-                        const float speed = parameters[0];
-                        const float length = parameters[1];
-                        const bool left = !parameters[2];
+                        const float speed = values.get<float>("stable_shared_key_speed");
+                        const float length = values.get<float>("stable_key_length");
+                        const bool left = !values.get<float>("stable_key_direction");
                         const Colour clear = { 0, 0, 0, 0 };
                         pixels.resize(description.width * description.height, clear);
                         // Our stream may be sub-stream of a larger canvas, work out full canvas width
@@ -378,21 +217,23 @@ int main(int argc, char** argv)
                 response.parameterData = outParameters.data();
                 response.textDataCount = uint32_t(outTexts.size());
                 response.textData = outTexts.data();
-                if (rs_sendFrame(description.handle, RS_FRAMETYPE_HOST_MEMORY, data, &response) != RS_ERROR_SUCCESS)
-                {
-                    tcerr << "Failed to send frame" << std::endl;
-                    rs_shutdown();
-                    return 6;
-                }
+                rs.sendFrame(description.handle, RS_FRAMETYPE_HOST_MEMORY, data, &response);
             }
         }
     }
 
-    if (rs_shutdown() != RS_ERROR_SUCCESS)
+    return 0;
+}
+
+int main(int argc, char** argv)
+{
+    try
     {
-        tcerr << "Failed to shutdown RenderStream" << std::endl;
+        return mainImpl(argc, argv);
+    }
+    catch (const std::exception& e)
+    {
+        tcerr << "Error: " << e.what() << std::endl;
         return 99;
     }
-
-    return 0;
 }

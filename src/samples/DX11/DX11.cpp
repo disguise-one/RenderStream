@@ -2,118 +2,26 @@
 //
 // Usage: Compile, copy the executable into your RenderStream Projects folder and launch via d3
 
-#define WIN32_LEAN_AND_MEAN
-
-#include <iostream>
 #include <vector>
-#include <windows.h>
-#include <shlwapi.h>
-#include <tchar.h>
 #include <d3d11.h>
 #include <d3dcompiler.h>
 #include <DirectXMath.h>
 #include <wrl.h>
 #include <unordered_map>
-#include <sstream>
 
 // auto-generated from hlsl
 #include "Generated_Code/VertexShader.h"
 #include "Generated_Code/PixelShader.h"
 
-#include "../../include/d3renderstream.h"
+#include "../../include/renderstream.hpp"
 
-#if defined(UNICODE) || defined(_UNICODE)
-#define tcout std::wcout
-#define tcerr std::wcerr
-#else
-#define tcout std::cout
-#define tcerr std::cerr
-#endif
-
-RS_ERROR (*_rs_logToD3)(const char*) = nullptr;
-
-#define LOG(streamexpr) { \
-    std::ostringstream s; \
-    s << streamexpr; \
-    std::string message = s.str(); \
-    std::cerr << message << std::endl; \
-    if (_rs_logToD3) \
-        _rs_logToD3(message.c_str()); \
-}
+#define LOG(streamexpr) std::cerr << streamexpr << std::endl
 
 #pragma comment(lib, "Shlwapi.lib")
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "d3dcompiler.lib")
 
-// Load renderstream DLL from disguise software's install path
-HMODULE loadRenderStream()
-{
-    HKEY hKey;
-    if (FAILED(RegOpenKeyEx(HKEY_CURRENT_USER, TEXT("Software\\d3 Technologies\\d3 Production Suite"), 0, KEY_READ, &hKey)))
-    {
-        LOG("Failed to open 'Software\\d3 Technologies\\d3 Production Suite' registry key");
-        return nullptr;
-    }
-
-    TCHAR buffer[512];
-    DWORD bufferSize = sizeof(buffer);
-    if (FAILED(RegQueryValueEx(hKey, TEXT("exe path"), 0, nullptr, reinterpret_cast<LPBYTE>(buffer), &bufferSize)))
-    {
-        LOG("Failed to query value of 'exe path'");
-        return nullptr;
-    }
-
-    if (!PathRemoveFileSpec(buffer))
-    {
-        LOG("Failed to remove file spec from path: " << buffer);
-        return nullptr;
-    }
-
-    if (_tcscat_s(buffer, bufferSize, TEXT("\\d3renderstream.dll")) != 0)
-    {
-        LOG("Failed to append filename to path: " << buffer);
-        return nullptr;
-    }
-
-    HMODULE hLib = ::LoadLibraryEx(buffer, NULL, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_APPLICATION_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32 | LOAD_LIBRARY_SEARCH_USER_DIRS);
-    if (!hLib)
-    {
-        LOG("Failed to load dll: " << buffer);
-        return nullptr;
-    }
-    return hLib;
-}
-
 // Get streams into (descMem) buffer and return a pointer into it
-const StreamDescriptions* getStreams(decltype(rs_getStreams)* rs_getStreams, std::vector<uint8_t>& descMem)
-{
-    uint32_t nBytes = 0;
-    rs_getStreams(nullptr, &nBytes);
-
-    const static int MAX_TRIES = 3;
-    int iterations = 0;
-
-    RS_ERROR res = RS_ERROR_BUFFER_OVERFLOW;
-    do
-    {
-        descMem.resize(nBytes);
-        res = rs_getStreams(reinterpret_cast<StreamDescriptions*>(descMem.data()), &nBytes);
-
-        if (res == RS_ERROR_SUCCESS)
-            break;
-
-        ++iterations;
-    } while (res == RS_ERROR_BUFFER_OVERFLOW && iterations < MAX_TRIES);
-
-    if (res != RS_ERROR_SUCCESS)
-        throw std::runtime_error("Failed to get streams");
-
-    if (nBytes < sizeof(StreamDescriptions))
-        throw std::runtime_error("Invalid stream descriptions");
-
-    return reinterpret_cast<const StreamDescriptions*>(descMem.data());
-}
-
 DXGI_FORMAT toDxgiFormat(RSPixelFormat format)
 {
     switch (format)
@@ -172,37 +80,11 @@ struct ConstantBufferStruct
     DirectX::XMMATRIX worldViewProjection;
 };
 
-int main()
+int mainImpl()
 {
-    HMODULE hLib = loadRenderStream();
-    if (!hLib)
-    {
-        LOG("Failed to load RenderStream DLL");
-        return 1;
-    }
+    RenderStream rs;
 
-#define LOAD_FN(FUNC_NAME) \
-    decltype(FUNC_NAME)* FUNC_NAME = reinterpret_cast<decltype(FUNC_NAME)>(GetProcAddress(hLib, #FUNC_NAME)); \
-    if (!FUNC_NAME) { \
-        LOG("Failed to get function " #FUNC_NAME " from DLL"); \
-        return 2; \
-    }
-
-    LOAD_FN(rs_initialise);
-    LOAD_FN(rs_initialiseGpGpuWithDX11Device);
-    LOAD_FN(rs_getStreams);
-    LOAD_FN(rs_awaitFrameData);
-    LOAD_FN(rs_getFrameCamera);
-    LOAD_FN(rs_sendFrame);
-    LOAD_FN(rs_shutdown);
-    _rs_logToD3 = reinterpret_cast<decltype(_rs_logToD3)>(GetProcAddress(hLib, "rs_logToD3"));
-
-    if (rs_initialise(RENDER_STREAM_VERSION_MAJOR, RENDER_STREAM_VERSION_MINOR) != RS_ERROR_SUCCESS)
-    {
-        LOG("Failed to initialise RenderStream");
-        return 3;
-    }
-
+    rs.initialise();
     LOG("RenderStream initialised - program starting");
 
 #ifdef _DEBUG
@@ -215,7 +97,6 @@ int main()
     if (FAILED(D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, deviceFlags, nullptr, 0, D3D11_SDK_VERSION, device.GetAddressOf(), nullptr, context.GetAddressOf())))
     {
         LOG("Failed to initialise DirectX 11");
-        rs_shutdown();
         return 4;
     }
 
@@ -230,7 +111,6 @@ int main()
         if (FAILED(device->CreateBuffer(&vertexDesc, &vertexData, vertexBuffer.GetAddressOf())))
         {
             LOG("Failed to initialise DirectX 11: vertex buffer");
-            rs_shutdown();
             return 41;
         }
     }
@@ -245,7 +125,6 @@ int main()
         if (FAILED(device->CreateBuffer(&indexDesc, &indexData, indexBuffer.GetAddressOf())))
         {
             LOG("Failed to initialise DirectX 11: index buffer");
-            rs_shutdown();
             return 42;
         }
     }
@@ -255,7 +134,6 @@ int main()
         if (FAILED(device->CreateVertexShader(VertexShaderBlob, std::size(VertexShaderBlob), nullptr, vertexShader.GetAddressOf())))
         {
             LOG("Failed to initialise DirectX 11: vertex shader");
-            rs_shutdown();
             return 43;
         }
     }
@@ -266,7 +144,6 @@ int main()
         if (FAILED(device->CreateInputLayout(inputElementDesc, ARRAYSIZE(inputElementDesc), VertexShaderBlob, std::size(VertexShaderBlob), inputLayout.GetAddressOf())))
         {
             LOG("Failed to initialise DirectX 11: index buffer");
-            rs_shutdown();
             return 44;
         }
     }
@@ -275,7 +152,6 @@ int main()
         if (FAILED(device->CreatePixelShader(PixelShaderBlob, std::size(PixelShaderBlob), nullptr, pixelShader.GetAddressOf())))
         {
             LOG("Failed to initialise DirectX 11: pixel shader");
-            rs_shutdown();
             return 45;
         }
     }
@@ -285,19 +161,12 @@ int main()
         if (FAILED(device->CreateBuffer(&constantBufferDesc, nullptr, constantBuffer.GetAddressOf())))
         {
             LOG("Failed to initialise DirectX 11: constant buffer");
-            rs_shutdown();
             return 46;
         }
     }
 
-    if (rs_initialiseGpGpuWithDX11Device(device.Get()) != RS_ERROR_SUCCESS)
-    {
-        LOG("Failed to initialise RenderStream GPGPU interop");
-        rs_shutdown();
-        return 5;
-    }
+    rs.initialiseGpGpuWithDX11Device(device.Get());
 
-    std::vector<uint8_t> descMem;
     const StreamDescriptions* header = nullptr;
     struct RenderTarget
     {
@@ -305,16 +174,16 @@ int main()
         Microsoft::WRL::ComPtr<ID3D11RenderTargetView> view;
     };
     std::unordered_map<StreamHandle, RenderTarget> renderTargets;
-    FrameData frameData;
     while (true)
     {
         // Wait for a frame request
-        RS_ERROR err = rs_awaitFrameData(5000, &frameData);
-        if (err == RS_ERROR_STREAMS_CHANGED)
+        std::variant<FrameData, RS_ERROR> awaitResult = rs.awaitFrameData(5000);
+        if (std::holds_alternative<RS_ERROR>(awaitResult))
         {
-            try
+            RS_ERROR err = std::get<RS_ERROR>(awaitResult);
+            if (err == RS_ERROR_STREAMS_CHANGED)
             {
-                header = getStreams(rs_getStreams, descMem);
+                header = rs.getStreams();
                 // Create render targets for all streams
                 const size_t numStreams = header ? header->nStreams : 0;
                 for (size_t i = 0; i < numStreams; ++i)
@@ -344,36 +213,22 @@ int main()
                     if (FAILED(device->CreateRenderTargetView(target.texture.Get(), &rtvDesc, target.view.GetAddressOf())))
                         throw std::runtime_error("Failed to create render target view for stream");
                 }
+                LOG("Found " << (header ? header->nStreams : 0) << " streams");
+                continue;
             }
-            catch (const std::exception& e)
+            else if (err == RS_ERROR_TIMEOUT)
             {
-                LOG(e.what());
-                rs_shutdown();
-                return 6;
+                continue;
             }
-            LOG("Found " << (header ? header->nStreams : 0) << " streams");
-            continue;
-        }
-        else if (err == RS_ERROR_TIMEOUT)
-        {
-            continue;
-        }
-        else if (err == RS_ERROR_QUIT)
-        {
-            LOG("Exiting due to quit request.");
-            RS_ERROR err = rs_shutdown();
-            if (err == RS_ERROR_SUCCESS)
+            else if (err == RS_ERROR_QUIT)
+            {
+                LOG("Exiting due to quit request.");
                 return 0;
-            else
-                return 99;
-        }
-        else if (err != RS_ERROR_SUCCESS)
-        {
-            LOG("rs_awaitFrameData returned " << err);
-            break;
+            }
         }
 
         // Respond to frame request
+        const FrameData& frameData = std::get<FrameData>(awaitResult);
         const size_t numStreams = header ? header->nStreams : 0;
         for (size_t i = 0; i < numStreams; ++i)
         {
@@ -381,7 +236,21 @@ int main()
 
             CameraResponseData cameraData;
             cameraData.tTracked = frameData.tTracked;
-            if (rs_getFrameCamera(description.handle, &cameraData.camera) == RS_ERROR_SUCCESS)
+            try
+            {
+                cameraData.camera = rs.getFrameCamera(description.handle);
+            }
+            catch (const RenderStreamError& e)
+            {
+                // It's possible to race here and be processing a request
+                // which uses data from before streams changed.
+                // TODO: Fix this in the API dll
+                if (e.error == RS_ERROR_NOTFOUND)
+                    continue;
+
+                throw;
+            }
+
             {
                 const RenderTarget& target = renderTargets.at(description.handle);
                 context->OMSetRenderTargets(1, target.view.GetAddressOf(), nullptr);
@@ -466,21 +335,23 @@ int main()
 
                 FrameResponseData response = {};
                 response.cameraData = &cameraData;
-                if (rs_sendFrame(description.handle, RS_FRAMETYPE_DX11_TEXTURE, data, &response) != RS_ERROR_SUCCESS)
-                {
-                    LOG("Failed to send frame");
-                    rs_shutdown();
-                    return 7;
-                }
+                rs.sendFrame(description.handle, RS_FRAMETYPE_DX11_TEXTURE, data, &response);
             }
         }
     }
 
-    if (rs_shutdown() != RS_ERROR_SUCCESS)
+    return 0;
+}
+
+int main()
+{
+    try
     {
-        LOG("Failed to shutdown RenderStream");
+        return mainImpl();
+    }
+    catch (const std::exception& e)
+    {
+        LOG("Error: " << e.what());
         return 99;
     }
-
-    return 0;
 }
