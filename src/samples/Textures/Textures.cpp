@@ -2,13 +2,6 @@
 //
 // Usage: Compile, copy the executable into your RenderStream Projects folder and launch via d3
 
-#define WIN32_LEAN_AND_MEAN
-
-#include <iostream>
-#include <vector>
-#include <string>
-#include <windows.h>
-#include <shlwapi.h>
 #include <tchar.h>
 #include <d3d11.h>
 #include <d3dcompiler.h>
@@ -20,8 +13,7 @@
 #include "Generated_Code/VertexShader.h"
 #include "Generated_Code/PixelShader.h"
 
-#include "../../include/d3renderstream.h"
-#include "../../include/d3helpers.hpp"
+#include "../../include/renderstream.hpp"
 
 #if defined(UNICODE) || defined(_UNICODE)
 #define tcout std::wcout
@@ -34,75 +26,6 @@
 #pragma comment(lib, "Shlwapi.lib")
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "d3dcompiler.lib")
-
-// Load renderstream DLL from disguise software's install path
-HMODULE loadRenderStream()
-{
-    HKEY hKey;
-    if (FAILED(RegOpenKeyEx(HKEY_CURRENT_USER, TEXT("Software\\d3 Technologies\\d3 Production Suite"), 0, KEY_READ, &hKey)))
-    {
-        tcerr << "Failed to open 'Software\\d3 Technologies\\d3 Production Suite' registry key" << std::endl;
-        return nullptr;
-    }
-
-    TCHAR buffer[512];
-    DWORD bufferSize = sizeof(buffer);
-    if (FAILED(RegQueryValueEx(hKey, TEXT("exe path"), 0, nullptr, reinterpret_cast<LPBYTE>(buffer), &bufferSize)))
-    {
-        tcerr << "Failed to query value of 'exe path'" << std::endl;
-        return nullptr;
-    }
-
-    if (!PathRemoveFileSpec(buffer))
-    {
-        tcerr << "Failed to remove file spec from path: " << buffer << std::endl;
-        return nullptr;
-    }
-
-    if (_tcscat_s(buffer, bufferSize, TEXT("\\d3renderstream.dll")) != 0)
-    {
-        tcerr << "Failed to append filename to path: " << buffer << std::endl;
-        return nullptr;
-    }
-
-    HMODULE hLib = ::LoadLibraryEx(buffer, NULL, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_APPLICATION_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32 | LOAD_LIBRARY_SEARCH_USER_DIRS);
-    if (!hLib)
-    {
-        tcerr << "Failed to load dll: " << buffer << std::endl;
-        return nullptr;
-    }
-    return hLib;
-}
-
-// Get streams into (descMem) buffer and return a pointer into it
-const StreamDescriptions* getStreams(decltype(rs_getStreams)* rs_getStreams, std::vector<uint8_t>& descMem)
-{
-    uint32_t nBytes = 0;
-    rs_getStreams(nullptr, &nBytes);
-
-    const static int MAX_TRIES = 3;
-    int iterations = 0;
-
-    RS_ERROR res = RS_ERROR_BUFFER_OVERFLOW;
-    do
-    {
-        descMem.resize(nBytes);
-        res = rs_getStreams(reinterpret_cast<StreamDescriptions*>(descMem.data()), &nBytes);
-
-        if (res == RS_ERROR_SUCCESS)
-            break;
-
-        ++iterations;
-    } while (res == RS_ERROR_BUFFER_OVERFLOW && iterations < MAX_TRIES);
-
-    if (res != RS_ERROR_SUCCESS)
-        throw std::runtime_error("Failed to get streams");
-
-    if (nBytes < sizeof(StreamDescriptions))
-        throw std::runtime_error("Invalid stream descriptions");
-
-    return reinterpret_cast<const StreamDescriptions*>(descMem.data());
-}
 
 DXGI_FORMAT toDxgiFormat(RSPixelFormat format)
 {
@@ -238,42 +161,10 @@ Texture createTexture(ID3D11Device* device, ImageFrameData image)
     return texture;
 }
 
-int main(int argc, char** argv)
+int mainImpl(int argc, char** argv)
 {
-    HMODULE hLib = loadRenderStream();
-    if (!hLib)
-    {
-        tcerr << "Failed to load RenderStream DLL" << std::endl;
-        return 1;
-    }
-
-#define LOAD_FN(FUNC_NAME) \
-    decltype(FUNC_NAME)* FUNC_NAME = reinterpret_cast<decltype(FUNC_NAME)>(GetProcAddress(hLib, #FUNC_NAME)); \
-    if (!FUNC_NAME) { \
-        tcerr << "Failed to get function " #FUNC_NAME " from DLL" << std::endl; \
-        return 2; \
-    }
-
-    LOAD_FN(rs_initialise);
-    LOAD_FN(rs_initialiseGpGpuWithDX11Device);
-    LOAD_FN(rs_saveSchema);
-    LOAD_FN(rs_setSchema);
-    LOAD_FN(rs_getStreams);
-    LOAD_FN(rs_awaitFrameData);
-    LOAD_FN(rs_getFrameParameters);
-    LOAD_FN(rs_getFrameImageData);
-    LOAD_FN(rs_getFrameImage2);
-    LOAD_FN(rs_getFrameText);
-    LOAD_FN(rs_getFrameCamera);
-    LOAD_FN(rs_sendFrame2);
-    LOAD_FN(rs_shutdown);
-    LOAD_FN(rs_setNewStatusMessage);
-
-    if (rs_initialise(RENDER_STREAM_VERSION_MAJOR, RENDER_STREAM_VERSION_MINOR) != RS_ERROR_SUCCESS)
-    {
-        tcerr << "Failed to initialise RenderStream" << std::endl;
-        return 3;
-    }
+    RenderStream rs;
+    rs.initialise();
 
 #ifdef _DEBUG
     const uint32_t deviceFlags = D3D11_CREATE_DEVICE_DEBUG;
@@ -285,7 +176,6 @@ int main(int argc, char** argv)
     if (FAILED(D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, deviceFlags, nullptr, 0, D3D11_SDK_VERSION, device.GetAddressOf(), nullptr, context.GetAddressOf())))
     {
         tcerr << "Failed to initialise DirectX 11" << std::endl;
-        rs_shutdown();
         return 4;
     }
 
@@ -300,7 +190,6 @@ int main(int argc, char** argv)
         if (FAILED(device->CreateBuffer(&vertexDesc, &vertexData, vertexBuffer.GetAddressOf())))
         {
             tcerr << "Failed to initialise DirectX 11: vertex buffer" << std::endl;
-            rs_shutdown();
             return 41;
         }
     }
@@ -315,7 +204,6 @@ int main(int argc, char** argv)
         if (FAILED(device->CreateBuffer(&indexDesc, &indexData, indexBuffer.GetAddressOf())))
         {
             tcerr << "Failed to initialise DirectX 11: index buffer" << std::endl;
-            rs_shutdown();
             return 42;
         }
     }
@@ -325,7 +213,6 @@ int main(int argc, char** argv)
         if (FAILED(device->CreateVertexShader(VertexShaderBlob, std::size(VertexShaderBlob), nullptr, vertexShader.GetAddressOf())))
         {
             tcerr << "Failed to initialise DirectX 11: vertex shader" << std::endl;
-            rs_shutdown();
             return 43;
         }
     }
@@ -339,7 +226,6 @@ int main(int argc, char** argv)
         if (FAILED(device->CreateInputLayout(inputElementDesc, ARRAYSIZE(inputElementDesc), VertexShaderBlob, std::size(VertexShaderBlob), inputLayout.GetAddressOf())))
         {
             tcerr << "Failed to initialise DirectX 11: index buffer" << std::endl;
-            rs_shutdown();
             return 44;
         }
     }
@@ -348,7 +234,6 @@ int main(int argc, char** argv)
         if (FAILED(device->CreatePixelShader(PixelShaderBlob, std::size(PixelShaderBlob), nullptr, pixelShader.GetAddressOf())))
         {
             tcerr << "Failed to initialise DirectX 11: pixel shader" << std::endl;
-            rs_shutdown();
             return 45;
         }
     }
@@ -358,17 +243,11 @@ int main(int argc, char** argv)
         if (FAILED(device->CreateBuffer(&constantBufferDesc, nullptr, constantBuffer.GetAddressOf())))
         {
             tcerr << "Failed to initialise DirectX 11: constant buffer" << std::endl;
-            rs_shutdown();
             return 46;
         }
     }
 
-    if (rs_initialiseGpGpuWithDX11Device(device.Get()) != RS_ERROR_SUCCESS)
-    {
-        tcerr << "Failed to initialise RenderStream GPGPU interop" << std::endl;
-        rs_shutdown();
-        return 5;
-    }
+    rs.initialiseGpGpuWithDX11Device(device.Get());
 
     ScopedSchema scoped; // C++ helper that cleans up mallocs and strdups
     scoped.schema.engineName = _strdup("Textures sample");
@@ -410,19 +289,11 @@ int main(int argc, char** argv)
     scoped.schema.scenes.scenes[0].parameters[2].dmxOffset = -1; // Auto
     scoped.schema.scenes.scenes[0].parameters[2].dmxType = RS_DMX_16_BE;
     scoped.schema.scenes.scenes[0].parameters[0].flags = REMOTEPARAMETER_NO_FLAGS;
-    if (rs_setSchema(&scoped.schema) != RS_ERROR_SUCCESS)
-    {
-        tcerr << "Failed to set schema" << std::endl;
-        return 6;
-    }
+    rs.setSchema(&scoped.schema);
 
     // Saving the schema to disk makes the remote parameters available in d3's UI before the application is launched
-    if (rs_saveSchema(argv[0], &scoped.schema) != RS_ERROR_SUCCESS)
-    {
-        tcerr << "Failed to save schema" << std::endl;
-        return 61;
-    }
-    std::vector<uint8_t> descMem;
+    rs.saveSchema(argv[0], &scoped.schema);
+
     const StreamDescriptions* header = nullptr;
     struct RenderTarget
     {
@@ -433,16 +304,16 @@ int main(int argc, char** argv)
     };
     std::unordered_map<StreamHandle, RenderTarget> renderTargets;
     Texture texture;
-    FrameData frameData;
     while (true)
     {
         // Wait for a frame request
-        RS_ERROR err = rs_awaitFrameData(5000, &frameData);
-        if (err == RS_ERROR_STREAMS_CHANGED)
+        auto awaitResult = rs.awaitFrameData(5000);
+        if (std::holds_alternative<RS_ERROR>(awaitResult))
         {
-            try
+            RS_ERROR err = std::get<RS_ERROR>(awaitResult);
+            if (err == RS_ERROR_STREAMS_CHANGED)
             {
-                header = getStreams(rs_getStreams, descMem);
+                header = rs.getStreams();
                 // Create render targets for all streams
                 const size_t numStreams = header ? header->nStreams : 0;
                 for (size_t i = 0; i < numStreams; ++i)
@@ -493,26 +364,21 @@ int main(int argc, char** argv)
                     if (FAILED(device->CreateDepthStencilView(target.depth.Get(), &dsvDesc, target.depthView.GetAddressOf())))
                         throw std::runtime_error("Failed to create depth view for stream");
                 }
+                tcout << "Found " << (header ? header->nStreams : 0) << " streams" << std::endl;
+                continue;
             }
-            catch (const std::exception& e)
+            else if (err == RS_ERROR_TIMEOUT)
             {
-                tcerr << e.what() << std::endl;
-                rs_shutdown();
-                return 7;
+                continue;
             }
-            tcout << "Found " << (header ? header->nStreams : 0) << " streams" << std::endl;
-            continue;
-        }
-        else if (err == RS_ERROR_TIMEOUT)
-        {
-            continue;
-        }
-        else if (err != RS_ERROR_SUCCESS)
-        {
-            tcerr << "rs_awaitFrameData returned " << err << std::endl;
-            break;
+            else if (err != RS_ERROR_SUCCESS)
+            {
+                tcerr << "rs_awaitFrameData returned " << err << std::endl;
+                break;
+            }
         }
 
+        const FrameData& frameData = std::get<FrameData>(awaitResult);
         if (frameData.scene >= scoped.schema.scenes.nScenes)
         {
             tcerr << "Scene out of bounds" << std::endl;
@@ -520,13 +386,9 @@ int main(int argc, char** argv)
         }
 
         const auto& scene = scoped.schema.scenes.scenes[frameData.scene];
+        ParameterValues values = rs.getFrameParameters(scene);
 
-        ImageFrameData image;
-        if (rs_getFrameImageData(scene.hash, &image, 1) != RS_ERROR_SUCCESS)
-        {
-            tcerr << "Failed to get image parameter data" << std::endl;
-            continue;
-        }
+        ImageFrameData image = values.get<ImageFrameData>("image_param1");
         if (texture.width != image.width || texture.height != image.height)
         {
             texture = createTexture(device.Get(), image);
@@ -534,31 +396,14 @@ int main(int argc, char** argv)
         SenderFrame data;
         data.type = RS_FRAMETYPE_DX11_TEXTURE;
         data.dx11.resource = texture.resource.Get();
-        if (rs_getFrameImage2(image.imageId, &data) != RS_ERROR_SUCCESS)
-        {
-            tcerr << "Failed to get image parameter" << std::endl;
-            continue;
-        }
+        rs.getFrameImage(image.imageId, data);
 
-        DirectX::XMMATRIX transform;
+        DirectX::XMMATRIX transform(values.get<std::array<float, 16>>("transform_param1").data());
         static_assert(sizeof(transform) == 4 * 4 * sizeof(float), "4x4 matrix");
-        if (rs_getFrameParameters(scene.hash, &transform, sizeof(transform)) != RS_ERROR_SUCCESS)
-        {
-            tcerr << "Failed to get transform parameter" << std::endl;
-            continue;
-        }
 
-        const char* text = nullptr;
-        if (rs_getFrameText(scene.hash, 0, &text) != RS_ERROR_SUCCESS)
-        {
-            tcerr << "Failed to get text parameter" << std::endl;
-            continue;
-        }
-        if (rs_setNewStatusMessage(text) != RS_ERROR_SUCCESS)
-        {
-            tcerr << "Failed to set status message" << std::endl;
-            continue;
-        }
+        const char* text = values.get<const char*>("text_param1");
+
+        rs.setNewStatusMessage(text);
 
         // Respond to frame request
         const size_t numStreams = header ? header->nStreams : 0;
@@ -568,7 +413,21 @@ int main(int argc, char** argv)
 
             CameraResponseData cameraData;
             cameraData.tTracked = frameData.tTracked;
-            if (rs_getFrameCamera(description.handle, &cameraData.camera) == RS_ERROR_SUCCESS)
+            try
+            {
+                cameraData.camera = rs.getFrameCamera(description.handle);
+            }
+            catch (const RenderStreamError& e)
+            {
+                // It's possible to race here and be processing a request
+                // which uses data from before streams changed.
+                // TODO: Fix this in the API dll
+                if (e.error == RS_ERROR_NOTFOUND)
+                    continue;
+
+                throw;
+            }
+
             {
                 const RenderTarget& target = renderTargets.at(description.handle);
                 context->OMSetRenderTargets(1, target.view.GetAddressOf(), target.depthView.Get());
@@ -654,21 +513,23 @@ int main(int argc, char** argv)
 
                 FrameResponseData response = {};
                 response.cameraData = &cameraData;
-                if (rs_sendFrame2(description.handle, &data, &response) != RS_ERROR_SUCCESS)
-                {
-                    tcerr << "Failed to send frame" << std::endl;
-                    rs_shutdown();
-                    return 8;
-                }
+                rs.sendFrame(description.handle, data, response);
             }
         }
     }
 
-    if (rs_shutdown() != RS_ERROR_SUCCESS)
+    return 0;
+}
+
+int main(int argc, char** argv)
+{
+    try
     {
-        tcerr << "Failed to shutdown RenderStream" << std::endl;
+        return mainImpl(argc, argv);
+    }
+    catch (const std::exception& e)
+    {
+        tcerr << "Error: " << e.what() << std::endl;
         return 99;
     }
-
-    return 0;
 }
