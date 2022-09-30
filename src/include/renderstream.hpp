@@ -83,7 +83,7 @@ public:
     void setSchema(Schema* schema);
 
     ParameterValues getFrameParameters(const RemoteParameters& scene);
-    void getFrameImage(int64_t imageId, SenderFrameType type, SenderFrameTypeData data);
+    void getFrameImage(int64_t imageId, const SenderFrame& frame);
 
     std::variant<FrameData, RS_ERROR> awaitFrameData(int timeoutMs);
 
@@ -91,7 +91,7 @@ public:
 
     CameraData getFrameCamera(StreamHandle stream);
 
-    void sendFrame(StreamHandle stream, SenderFrameType type, SenderFrameTypeData data, const FrameResponseData* response);
+    void sendFrame(StreamHandle stream, const SenderFrame& frame, const FrameResponseData& response);
 
     void setNewStatusMessage(const char* message);
 
@@ -114,10 +114,10 @@ private:
     DECL_FN(getFrameParameters);
     DECL_FN(getFrameImageData);
     DECL_FN(getFrameText);
-    DECL_FN(getFrameImage);
+    DECL_FN(getFrameImage2);
     DECL_FN(awaitFrameData);
     DECL_FN(getFrameCamera);
-    DECL_FN(sendFrame);
+    DECL_FN(sendFrame2);
     DECL_FN(setNewStatusMessage);
     DECL_FN(shutdown);
 };
@@ -175,11 +175,11 @@ void RenderStream::initialise()
     LOAD_FN(getFrameParameters);
     LOAD_FN(getFrameImageData);
     LOAD_FN(getFrameText);
-    LOAD_FN(getFrameImage);
+    LOAD_FN(getFrameImage2);
     LOAD_FN(getStreams);
     LOAD_FN(awaitFrameData);
     LOAD_FN(getFrameCamera);
-    LOAD_FN(sendFrame);
+    LOAD_FN(sendFrame2);
     LOAD_FN(setNewStatusMessage);
     LOAD_FN(shutdown);
 
@@ -256,9 +256,9 @@ ParameterValues RenderStream::getFrameParameters(const RemoteParameters& scene)
     return ParameterValues(*this, scene);
 }
 
-void RenderStream::getFrameImage(int64_t imageId, SenderFrameType type, SenderFrameTypeData data)
+void RenderStream::getFrameImage(int64_t imageId, const SenderFrame& frame)
 {
-    checkRs(m_getFrameImage(imageId, type, data), __FUNCTION__);
+    checkRs(m_getFrameImage2(imageId, &frame), __FUNCTION__);
 }
 
 std::variant<FrameData, RS_ERROR> RenderStream::awaitFrameData(int timeoutMs)
@@ -307,9 +307,9 @@ CameraData RenderStream::getFrameCamera(StreamHandle stream)
     return out;
 }
 
-void RenderStream::sendFrame(StreamHandle stream, SenderFrameType frameType, SenderFrameTypeData frameData, const FrameResponseData* response)
+void RenderStream::sendFrame(StreamHandle stream, const SenderFrame& frame, const FrameResponseData& response)
 {
-    checkRs(m_sendFrame(stream, frameType, frameData, response), __FUNCTION__);
+    checkRs(m_sendFrame2(stream, &frame, &response), __FUNCTION__);
 }
 
 void RenderStream::setNewStatusMessage(const char* message)

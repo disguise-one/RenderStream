@@ -553,12 +553,13 @@ int mainImpl()
                 ID3D12CommandList* ppCommandLists[] = { commandList.Get() };
                 commandQueue->ExecuteCommandLists(1, ppCommandLists);
 
-                SenderFrameTypeData data;
+                SenderFrame data;
+                data.type = RS_FRAMETYPE_DX12_TEXTURE;
                 data.dx12.resource = target.texture.Get();
 
                 FrameResponseData response = {};
                 response.cameraData = &cameraData;
-                rs.sendFrame(description.handle, RS_FRAMETYPE_DX12_TEXTURE, data, &response);
+                rs.sendFrame(description.handle, data, response);
             }
         }
     }

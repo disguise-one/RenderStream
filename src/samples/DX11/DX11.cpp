@@ -330,12 +330,13 @@ int mainImpl()
                     startIndex += indexCount;
                 }
 
-                SenderFrameTypeData data;
+                SenderFrame data;
+                data.type = RS_FRAMETYPE_DX11_TEXTURE;
                 data.dx11.resource = target.texture.Get();
 
                 FrameResponseData response = {};
                 response.cameraData = &cameraData;
-                rs.sendFrame(description.handle, RS_FRAMETYPE_DX11_TEXTURE, data, &response);
+                rs.sendFrame(description.handle, data, response);
             }
         }
     }

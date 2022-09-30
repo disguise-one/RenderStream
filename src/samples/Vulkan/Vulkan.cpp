@@ -72,7 +72,7 @@ HMODULE loadRenderStream()
         return nullptr;
     }
 
-    if (_tcscat_s(buffer, bufferSize, TEXT("\\d3renderstream.dll")) != 0)
+    if (_tcscat_s(buffer, TEXT("\\d3renderstream.dll")) != 0)
     {
         LOG("Failed to append filename to path: " << buffer);
         return nullptr;
@@ -356,7 +356,7 @@ int main()
     LOAD_FN(rs_getStreams);
     LOAD_FN(rs_awaitFrameData);
     LOAD_FN(rs_getFrameCamera);
-    LOAD_FN(rs_sendFrame);
+    LOAD_FN(rs_sendFrame2);
     LOAD_FN(rs_shutdown);
     _rs_logToD3 = reinterpret_cast<decltype(_rs_logToD3)>(GetProcAddress(hLib, "rs_logToD3"));
 
@@ -1193,23 +1193,21 @@ int main()
                 submitInfo.pSignalSemaphores = &target.semaphore;
                 vkQueueSubmit(queue, 1, &submitInfo, target.fence);
 
-                VulkanDataStructure imageData;
-                imageData.memory = target.mem;
-                imageData.size = target.offset + target.size;
-                imageData.format = description.format;
-                imageData.width = description.width;
-                imageData.height = description.height;
-                imageData.waitSemaphore = target.semaphore;
-                imageData.waitSemaphoreValue = target.semaphoreValue;
-                imageData.signalSemaphore = target.semaphore;
-                imageData.signalSemaphoreValue = ++target.semaphoreValue;
-
-                SenderFrameTypeData data;
-                data.vk.image = &imageData;
+                SenderFrame data;
+                data.type = RS_FRAMETYPE_VULKAN_TEXTURE;
+                data.vk.memory = target.mem;
+                data.vk.size = target.offset + target.size;
+                data.vk.format = description.format;
+                data.vk.width = description.width;
+                data.vk.height = description.height;
+                data.vk.waitSemaphore = target.semaphore;
+                data.vk.waitSemaphoreValue = target.semaphoreValue;
+                data.vk.signalSemaphore = target.semaphore;
+                data.vk.signalSemaphoreValue = ++target.semaphoreValue;
 
                 FrameResponseData response = {};
                 response.cameraData = &cameraData;
-                if (rs_sendFrame(description.handle, RS_FRAMETYPE_VULKAN_TEXTURE, data, &response) != RS_ERROR_SUCCESS)
+                if (rs_sendFrame2(description.handle, &data, &response) != RS_ERROR_SUCCESS)
                 {
                     LOG("Failed to send frame");
                     rs_shutdown();

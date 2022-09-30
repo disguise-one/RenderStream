@@ -98,8 +98,10 @@ int mainImpl()
                     continue;
                 }
 
-                SenderFrameTypeData data;
+                SenderFrame data;
+                data.type = RS_FRAMETYPE_HOST_MEMORY;
                 data.cpu.stride = description.width * uint32_t(pixel.size());
+                data.cpu.format = RS_FMT_BGRA8;
                 std::vector<uint8_t> pixels;
                 pixels.reserve(data.cpu.stride * description.height);
                 // Fill canvas with variable-sized pixels
@@ -112,7 +114,7 @@ int mainImpl()
 
                 FrameResponseData response = {};
                 response.cameraData = &cameraData;
-                rs.sendFrame(description.handle, RS_FRAMETYPE_HOST_MEMORY, data, &response);
+                rs.sendFrame(description.handle, data, response);
             }
         }
     }

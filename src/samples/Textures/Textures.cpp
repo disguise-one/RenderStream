@@ -393,9 +393,10 @@ int mainImpl(int argc, char** argv)
         {
             texture = createTexture(device.Get(), image);
         }
-        SenderFrameTypeData data;
+        SenderFrame data;
+        data.type = RS_FRAMETYPE_DX11_TEXTURE;
         data.dx11.resource = texture.resource.Get();
-        rs.getFrameImage(image.imageId, RS_FRAMETYPE_DX11_TEXTURE, data);
+        rs.getFrameImage(image.imageId, data);
 
         DirectX::XMMATRIX transform(values.get<std::array<float, 16>>("transform_param1").data());
         static_assert(sizeof(transform) == 4 * 4 * sizeof(float), "4x4 matrix");
@@ -506,12 +507,13 @@ int mainImpl(int argc, char** argv)
                     startIndex += indexCount;
                 }
 
-                SenderFrameTypeData data;
+                SenderFrame data;
+                data.type = RS_FRAMETYPE_DX11_TEXTURE;
                 data.dx11.resource = target.texture.Get();
 
                 FrameResponseData response = {};
                 response.cameraData = &cameraData;
-                rs.sendFrame(description.handle, RS_FRAMETYPE_DX11_TEXTURE, data, &response);
+                rs.sendFrame(description.handle, data, response);
             }
         }
     }

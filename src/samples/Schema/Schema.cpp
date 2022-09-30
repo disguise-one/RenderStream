@@ -206,9 +206,11 @@ int mainImpl(int argc, char** argv)
                     }
                 }
 
-                SenderFrameTypeData data;
+                SenderFrame data;
+                data.type = RS_FRAMETYPE_HOST_MEMORY;
                 data.cpu.stride = description.width * sizeof(Colour);
                 data.cpu.data = reinterpret_cast<uint8_t*>(pixels.data());
+                data.cpu.format = RS_FMT_BGRA8;
 
                 FrameResponseData response = {};
                 response.cameraData = &cameraData;
@@ -217,7 +219,7 @@ int mainImpl(int argc, char** argv)
                 response.parameterData = outParameters.data();
                 response.textDataCount = uint32_t(outTexts.size());
                 response.textData = outTexts.data();
-                rs.sendFrame(description.handle, RS_FRAMETYPE_HOST_MEMORY, data, &response);
+                rs.sendFrame(description.handle, data, response);
             }
         }
     }

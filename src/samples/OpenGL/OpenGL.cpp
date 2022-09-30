@@ -441,12 +441,13 @@ int mainImpl()
 
                 glFinish();
 
-                SenderFrameTypeData data;
+                SenderFrame data;
+                data.type = RS_FRAMETYPE_OPENGL_TEXTURE;
                 data.gl.texture = target.texture;
 
                 FrameResponseData response = {};
                 response.cameraData = &cameraData;
-                rs.sendFrame(description.handle, RS_FRAMETYPE_OPENGL_TEXTURE, data, &response);
+                rs.sendFrame(description.handle, data, response);
 
                 glBindVertexArray(0);
                 glUseProgram(0);
