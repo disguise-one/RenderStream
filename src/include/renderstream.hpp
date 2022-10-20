@@ -465,8 +465,8 @@ inline float ParameterValues::get(const std::string& key)
     return m_floatValues[index];
 }
 
-inline template <>
-std::array<float, 16> ParameterValues::get(const std::string& key)
+template <>
+inline std::array<float, 16> ParameterValues::get(const std::string& key)
 {
     auto [index, type] = iKey(key);
     if (type != RS_PARAMETER_TRANSFORM && type != RS_PARAMETER_POSE)
