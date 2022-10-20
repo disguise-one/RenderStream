@@ -37,7 +37,7 @@ public:
     RS_ERROR error;
 };
 
-void checkRs(RS_ERROR err, const char* context)
+inline void checkRs(RS_ERROR err, const char* context)
 {
     if (err != RS_ERROR_SUCCESS)
         throw RenderStreamError(err, std::string("Error calling ") + context + " - " + std::to_string(err));
@@ -47,13 +47,13 @@ void checkRs(RS_ERROR err, const char* context)
 class ParameterValues
 {
 public:
-    ParameterValues(class RenderStream& rs, const RemoteParameters& scene);
+    inline ParameterValues(class RenderStream& rs, const RemoteParameters& scene);
 
     template <typename T>
     T get(const std::string& key);
 
 private:
-    std::tuple<size_t, RemoteParameterType> iKey(const std::string& key);
+    inline std::tuple<size_t, RemoteParameterType> iKey(const std::string& key);
 
     class RenderStream* m_rs;
     const RemoteParameters* m_parameters;
@@ -67,33 +67,33 @@ private:
 class RenderStream
 {
 public:
-    RenderStream();
-    ~RenderStream();
+    inline RenderStream();
+    inline ~RenderStream();
 
-    void initialise();
+    inline void initialise();
 
-    void initialiseGpGpuWithDX11Device(ID3D11Device* device);
-    void initialiseGpGpuWithDX11Resource(ID3D11Resource* resource);
-    void initialiseGpGpuWithDX12DeviceAndQueue(ID3D12Device* device, ID3D12CommandQueue* queue);
-    void initialiseGpGpuWithOpenGlContexts(HGLRC glContext, HDC deviceContext);
-    void initialiseGpGpuWithoutInterop();
+    inline void initialiseGpGpuWithDX11Device(ID3D11Device* device);
+    inline void initialiseGpGpuWithDX11Resource(ID3D11Resource* resource);
+    inline void initialiseGpGpuWithDX12DeviceAndQueue(ID3D12Device* device, ID3D12CommandQueue* queue);
+    inline void initialiseGpGpuWithOpenGlContexts(HGLRC glContext, HDC deviceContext);
+    inline void initialiseGpGpuWithoutInterop();
 
-    const Schema* loadSchema(const char* assetPath);
-    void saveSchema(const char* assetPath, Schema* schema);
-    void setSchema(Schema* schema);
+    inline const Schema* loadSchema(const char* assetPath);
+    inline void saveSchema(const char* assetPath, Schema* schema);
+    inline void setSchema(Schema* schema);
 
-    ParameterValues getFrameParameters(const RemoteParameters& scene);
-    void getFrameImage(int64_t imageId, SenderFrameType type, SenderFrameTypeData data);
+    inline ParameterValues getFrameParameters(const RemoteParameters& scene);
+    inline void getFrameImage(int64_t imageId, SenderFrameType type, SenderFrameTypeData data);
 
-    std::variant<FrameData, RS_ERROR> awaitFrameData(int timeoutMs);
+    inline std::variant<FrameData, RS_ERROR> awaitFrameData(int timeoutMs);
 
-    const StreamDescriptions* getStreams();
+    inline const StreamDescriptions* getStreams();
 
-    CameraData getFrameCamera(StreamHandle stream);
+    inline CameraData getFrameCamera(StreamHandle stream);
 
-    void sendFrame(StreamHandle stream, SenderFrameType type, SenderFrameTypeData data, const FrameResponseData* response);
+    inline void sendFrame(StreamHandle stream, SenderFrameType type, SenderFrameTypeData data, const FrameResponseData* response);
 
-    void setNewStatusMessage(const char* message);
+    inline void setNewStatusMessage(const char* message);
 
 private:
     friend class ParameterValues; // uses the various low level parameter accessors
@@ -467,7 +467,7 @@ std::tuple<size_t, RemoteParameterType> ParameterValues::iKey(const std::string&
 //}
 
 template <>
-float ParameterValues::get(const std::string& key)
+inline float ParameterValues::get(const std::string& key)
 {
     auto [index, type] = iKey(key);
     if (type != RS_PARAMETER_NUMBER)
@@ -476,7 +476,7 @@ float ParameterValues::get(const std::string& key)
 }
 
 template <>
-std::array<float, 16> ParameterValues::get(const std::string& key)
+inline std::array<float, 16> ParameterValues::get(const std::string& key)
 {
     auto [index, type] = iKey(key);
     if (type != RS_PARAMETER_TRANSFORM && type != RS_PARAMETER_POSE)
@@ -487,7 +487,7 @@ std::array<float, 16> ParameterValues::get(const std::string& key)
 }
 
 template <>
-ImageFrameData ParameterValues::get(const std::string& key)
+inline ImageFrameData ParameterValues::get(const std::string& key)
 {
     auto [index, type] = iKey(key);
     if (type != RS_PARAMETER_IMAGE)
@@ -497,7 +497,7 @@ ImageFrameData ParameterValues::get(const std::string& key)
 }
 
 template <>
-const char* ParameterValues::get(const std::string& key)
+inline const char* ParameterValues::get(const std::string& key)
 {
     auto [index, type] = iKey(key);
     if (type != RS_PARAMETER_TEXT)
