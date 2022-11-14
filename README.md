@@ -169,7 +169,9 @@ Once the render calls are dispatched (i.e. it is not necessary to wait for any G
 
 ## Applying camera data
 
-The `CameraData` struct, filled in by `rs_getFrameCamera` has 2 modes - perspective, and orthographic. The camera data provided should be applied without smoothing or interpolation, as this is synchronised between all render nodes.
+The `CameraData` struct, filled in by `rs_getFrameCamera` has 3 modes - untracked, perspective, and orthographic. If the application does apply camera data, the camera data provided must be applied without smoothing or interpolation, as this is synchronised between all render nodes.
+
+To determine if the camera is tracked at all, check the `cameraHandle` value - if this value is 0, then there is no tracking data and the camera is controlled by the application. No modifications to the viewpoint should be made in this case.
 
 To determine if the camera is in perspective or orthographic mode, check if `orthoWidth == 0` - if true, the camera is a perspective projection, otherwise it is orthographic.
 
