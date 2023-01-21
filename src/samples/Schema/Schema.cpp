@@ -3,6 +3,7 @@
 // Usage: Compile, copy the executable into your RenderStream Projects folder and launch via d3
 
 #include <tchar.h>
+#include <vector>
 
 #include "../../include/renderstream.hpp"
 
@@ -58,8 +59,13 @@ int mainImpl(int argc, char** argv)
         if (schema && schema->scenes.nScenes > 0)
             tcout << "A schema existed on disk" << std::endl;
     }
+    
+    std::vector<const char*> names;
+    names.push_back("Default");
 
     ScopedSchema scoped; // C++ helper that cleans up mallocs and strdups
+    scoped.schema.channels.nChannels = names.size();
+    scoped.schema.channels.channels = names.data();
     scoped.schema.scenes.nScenes = 2;
     scoped.schema.scenes.scenes = static_cast<RemoteParameters*>(malloc(scoped.schema.scenes.nScenes * sizeof(RemoteParameters)));
     scoped.schema.scenes.scenes[0].name = _strdup("Strobe");
