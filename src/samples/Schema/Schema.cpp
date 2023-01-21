@@ -69,7 +69,7 @@ int mainImpl(int argc, char** argv)
     scoped.schema.engineName = _strdup("Schema sample");
     scoped.schema.engineVersion = _strdup(("RS" + std::to_string(RENDER_STREAM_VERSION_MAJOR) + "." + std::to_string(RENDER_STREAM_VERSION_MINOR)).c_str());
     scoped.schema.info = _strdup("");
-    scoped.schema.channels.nChannels = 1;
+    scoped.schema.channels.nChannels = names.size();
     scoped.schema.channels.channels = names.data();
     scoped.schema.scenes.nScenes = 2;
     scoped.schema.scenes.scenes = static_cast<RemoteParameters*>(malloc(scoped.schema.scenes.nScenes * sizeof(RemoteParameters)));
