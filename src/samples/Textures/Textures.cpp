@@ -277,7 +277,7 @@ int mainImpl(int argc, char** argv)
     scoped.schema.scenes.scenes[0].parameters[1].options = nullptr;
     scoped.schema.scenes.scenes[0].parameters[1].dmxOffset = -1; // Auto
     scoped.schema.scenes.scenes[0].parameters[1].dmxType = RS_DMX_16_BE;
-    scoped.schema.scenes.scenes[0].parameters[0].flags = REMOTEPARAMETER_NO_SEQUENCE;
+    scoped.schema.scenes.scenes[0].parameters[1].flags = REMOTEPARAMETER_NO_SEQUENCE;
     // Text parameter
     scoped.schema.scenes.scenes[0].parameters[2].group = _strdup("Workload status");
     scoped.schema.scenes.scenes[0].parameters[2].key = _strdup("text_param1");
@@ -288,7 +288,7 @@ int mainImpl(int argc, char** argv)
     scoped.schema.scenes.scenes[0].parameters[2].options = nullptr;
     scoped.schema.scenes.scenes[0].parameters[2].dmxOffset = -1; // Auto
     scoped.schema.scenes.scenes[0].parameters[2].dmxType = RS_DMX_16_BE;
-    scoped.schema.scenes.scenes[0].parameters[0].flags = REMOTEPARAMETER_NO_FLAGS;
+    scoped.schema.scenes.scenes[0].parameters[2].flags = REMOTEPARAMETER_NO_FLAGS;
     rs.setSchema(&scoped.schema);
 
     // Saving the schema to disk makes the remote parameters available in d3's UI before the application is launched
