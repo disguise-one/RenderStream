@@ -224,6 +224,8 @@ typedef struct
     uint32_t height;
     RSPixelFormat format;
     ProjectionClipping clipping;
+    const char* mappingName;
+    int32_t iFragment;
 } StreamDescription;
 
 typedef struct
@@ -329,7 +331,7 @@ typedef struct
 #define D3_RENDER_STREAM_API __declspec( dllexport )
 
 #define RENDER_STREAM_VERSION_MAJOR 1
-#define RENDER_STREAM_VERSION_MINOR 31
+#define RENDER_STREAM_VERSION_MINOR 32
 
 #define RENDER_STREAM_VERSION_STRING stringify(RENDER_STREAM_VERSION_MAJOR) "." stringify(RENDER_STREAM_VERSION_MINOR)
 

@@ -181,6 +181,8 @@ void iypLogStreams(const StreamDescriptions * const header)
         tcout << "clipping.top: " << desc.clipping.top << std::endl;
         tcout << "clipping.left: " << desc.clipping.left << std::endl;
         tcout << "clipping.right: " << desc.clipping.right << std::endl;
+        tcout << "mappingName: " << desc.mappingName << std::endl;
+        tcout << "iFragment: " << desc.iFragment << std::endl;
     }
     tcout << "=================IYP========================" << std::endl;
 }
