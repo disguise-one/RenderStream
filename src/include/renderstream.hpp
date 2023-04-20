@@ -83,7 +83,7 @@ public:
     inline void setSchema(Schema* schema);
 
     inline ParameterValues getFrameParameters(const RemoteParameters& scene);
-    inline void getFrameImage(int64_t imageId, const SenderFrame& frame);
+    inline void getFrameImage(int64_t imageId, /*InOut*/const SenderFrame* data);
 
     inline std::variant<FrameData, RS_ERROR> awaitFrameData(int timeoutMs);
 
@@ -260,9 +260,9 @@ ParameterValues RenderStream::getFrameParameters(const RemoteParameters& scene)
     return ParameterValues(*this, scene);
 }
 
-void RenderStream::getFrameImage(int64_t imageId, const SenderFrame& frame)
+void RenderStream::getFrameImage(int64_t imageId, const SenderFrame* frame)
 {
-    checkRs(m_getFrameImage2(imageId, &frame), __FUNCTION__);
+    checkRs(m_getFrameImage2(imageId, frame), __FUNCTION__);
 }
 
 std::variant<FrameData, RS_ERROR> RenderStream::awaitFrameData(int timeoutMs)

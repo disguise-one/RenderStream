@@ -161,6 +161,30 @@ Texture createTexture(ID3D11Device* device, ImageFrameData image)
     return texture;
 }
 
+void iypLogStreams(const StreamDescriptions * const header)
+{
+    const size_t numStreams = header ? header->nStreams : 0;
+    tcout << "=================IYP========================" << std::endl;
+    for (size_t i = 0; i < numStreams; ++i)
+    {
+        const StreamDescription& desc = header->streams[i];
+        tcout << "STREAM " << i << std::endl;
+        tcout << "Handle: " << desc.handle << std::endl;
+        tcout << "Channel: " << desc.channel << std::endl;
+        tcout << "mappingId: " << desc.mappingId << std::endl;
+        tcout << "iViewpoint: " << desc.iViewpoint << std::endl;
+        tcout << "name: " << desc.name << std::endl;
+        tcout << "width: " << desc.width << std::endl;
+        tcout << "height: " << desc.height << std::endl;
+        tcout << "format: " << desc.format << std::endl;
+        tcout << "clipping.bottom: " << desc.clipping.bottom << std::endl;
+        tcout << "clipping.top: " << desc.clipping.top << std::endl;
+        tcout << "clipping.left: " << desc.clipping.left << std::endl;
+        tcout << "clipping.right: " << desc.clipping.right << std::endl;
+    }
+    tcout << "=================IYP========================" << std::endl;
+}
+
 int mainImpl(int argc, char** argv)
 {
     RenderStream rs;
@@ -314,6 +338,7 @@ int mainImpl(int argc, char** argv)
             if (err == RS_ERROR_STREAMS_CHANGED)
             {
                 header = rs.getStreams();
+                iypLogStreams(header);
                 // Create render targets for all streams
                 const size_t numStreams = header ? header->nStreams : 0;
                 for (size_t i = 0; i < numStreams; ++i)
@@ -396,7 +421,7 @@ int mainImpl(int argc, char** argv)
         SenderFrame data;
         data.type = RS_FRAMETYPE_DX11_TEXTURE;
         data.dx11.resource = texture.resource.Get();
-        rs.getFrameImage(image.imageId, data);
+        rs.getFrameImage(image.imageId, &data);
 
         DirectX::XMMATRIX transform(values.get<std::array<float, 16>>("transform_param1").data());
         static_assert(sizeof(transform) == 4 * 4 * sizeof(float), "4x4 matrix");
