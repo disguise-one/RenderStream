@@ -1,3 +1,10 @@
+# rs1.32
+* Added mappingName field to StreamDescription.
+    * Contains the name of the mapping in d3 that this stream is used for.
+* Added iFragment field to StreamDescription.
+    * Contains index of the fragment of the mapping in d3 that this stream is used for.
+    * d3 will split mappings into multiple fragments when a mapping is distributed over multiple render engines.
+	
 # rs1.31
 * Engines must no longer call `rs_sendFrame`, `rs_getImage` and `rs_releaseImage`. These have been replaced with a variant which appends `2` to the name. This is in order to change the calling parameters to use a single `SenderFrame` object, while maintaining ABI compatibility with prior releases.
 * `VulkanData` now contains the required information directly, rather than requiring a structure (which was due to ABI compatibility concerns.)
