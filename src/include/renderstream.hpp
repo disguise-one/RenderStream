@@ -62,6 +62,33 @@ private:
     std::vector<const char*> m_textValues;
 };
 
+template <typename Char, typename Traits>
+std::basic_ostream<Char, Traits> & operator << (std::basic_ostream<Char, Traits> & out, const StreamDescriptions& streamDescriptions)
+{
+    out << "===== StreamDescriptions ====" << std::endl;
+    for (size_t i = 0; i < streamDescriptions.nStreams; ++i)
+    {
+        const StreamDescription& desc = streamDescriptions.streams[i];
+        out << "STREAM " << i << std::endl;
+        out << "Handle: " << desc.handle << std::endl;
+        out << "Channel: " << desc.channel << std::endl;
+        out << "mappingId: " << desc.mappingId << std::endl;
+        out << "iViewpoint: " << desc.iViewpoint << std::endl;
+        out << "name: " << desc.name << std::endl;
+        out << "width: " << desc.width << std::endl;
+        out << "height: " << desc.height << std::endl;
+        out << "format: " << desc.format << std::endl;
+        out << "clipping.bottom: " << desc.clipping.bottom << std::endl;
+        out << "clipping.top: " << desc.clipping.top << std::endl;
+        out << "clipping.left: " << desc.clipping.left << std::endl;
+        out << "clipping.right: " << desc.clipping.right << std::endl;
+        out << "mappingName: " << desc.mappingName << std::endl;
+        out << "iFragment: " << desc.iFragment << std::endl;
+        out << std::endl;
+    }
+    out << "=============================" << std::endl;
+    return out;
+}
 
 // RenderStream wrapper class to load and interact with disguise RenderStream.
 class RenderStream
@@ -83,7 +110,7 @@ public:
     inline void setSchema(Schema* schema);
 
     inline ParameterValues getFrameParameters(const RemoteParameters& scene);
-    inline void getFrameImage(int64_t imageId, /*InOut*/const SenderFrame* data);
+    inline void getFrameImage(int64_t imageId, /*InOut*/const SenderFrame& data);
 
     inline std::variant<FrameData, RS_ERROR> awaitFrameData(int timeoutMs);
 
@@ -256,9 +283,9 @@ ParameterValues RenderStream::getFrameParameters(const RemoteParameters& scene)
     return ParameterValues(*this, scene);
 }
 
-void RenderStream::getFrameImage(int64_t imageId, const SenderFrame* frame)
+void RenderStream::getFrameImage(int64_t imageId, const SenderFrame& frame)
 {
-    checkRs(m_getFrameImage2(imageId, frame), __FUNCTION__);
+    checkRs(m_getFrameImage2(imageId, &frame), __FUNCTION__);
 }
 
 std::variant<FrameData, RS_ERROR> RenderStream::awaitFrameData(int timeoutMs)
