@@ -83,7 +83,7 @@ public:
     inline void setSchema(Schema* schema);
 
     inline ParameterValues getFrameParameters(const RemoteParameters& scene);
-    inline void getFrameImage(int64_t imageId, SenderFrameType type, SenderFrameTypeData data);
+    inline void getFrameImage(int64_t imageId, const SenderFrame& frame);
 
     inline std::variant<FrameData, RS_ERROR> awaitFrameData(int timeoutMs);
 
