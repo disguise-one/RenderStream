@@ -357,6 +357,10 @@ struct ScopedSchema
     }
     void reset()
     {
+        free(const_cast<char*>(schema.engineName));
+        free(const_cast<char*>(schema.engineVersion));
+        free(const_cast<char*>(schema.pluginVersion));
+        free(const_cast<char*>(schema.info));
         for (size_t i = 0; i < schema.channels.nChannels; ++i)
             free(const_cast<char*>(schema.channels.channels[i]));
         free(schema.channels.channels);
@@ -403,6 +407,10 @@ struct ScopedSchema
 private:
     void clear()
     {
+        schema.engineName = nullptr;
+        schema.engineVersion = nullptr;
+        schema.pluginVersion = nullptr;
+        schema.info = nullptr;
         schema.channels.nChannels = 0;
         schema.channels.channels = nullptr;
         schema.scenes.nScenes = 0;

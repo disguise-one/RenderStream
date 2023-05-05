@@ -14,7 +14,7 @@ This repository is for API definitions, documentation and examples.
 # Requirements
 * 64-bit Windows 10 and above
 * A valid [disguise software license](https://store.disguise.one/) or RenderStream license (available on [rx range](https://www.disguise.one/en/products/rx-range/) hardware)
-* An r21.3 install of the disguise software
+* The latest install of the disguise designer software (available from https://download.disguise.one/)
 
 # Support
 Please raise RenderStream API issues on this GitHub repository or contact support@disguise.one for general disguise support
@@ -184,6 +184,8 @@ Orthographic cameras use `orthoWidth` for the horizontal measurement of the view
 Perspective cameras should use the focal length and sensor sizes to compute throw ratios or field of view values as appropriate.
 
 Once the perspective matrix is found, it is necessary to also apply the clipping values to adjust the projected area. This allows distribution of the frame buffer across multiple nodes. This information is available in the `StreamDescription` for the given stream.
+
+Aperture (f-stop) values and focus distance (m) can also be used to simulate depth of field effects.
 
 The samples in this repository show this process in detail, and it is recommended to use the calculations given in the samples as reference for this, to ensure correctness.
 

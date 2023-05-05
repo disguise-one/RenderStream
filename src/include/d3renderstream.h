@@ -109,10 +109,7 @@ typedef void (*logger_t)(const char*);
 #pragma pack(push, 4)
 typedef struct
 {
-    float virtualZoomScale;
     uint8_t virtualReprojectionRequired;
-    float xRealCamera, yRealCamera, zRealCamera;
-    float rxRealCamera, ryRealCamera, rzRealCamera;
 } D3TrackingData;  // Tracking data required by d3 but not used to render content
 
 typedef struct
@@ -126,6 +123,8 @@ typedef struct
     float cx, cy;
     float nearZ, farZ;
     float orthoWidth;  // If > 0, an orthographic camera should be used
+    float aperture; // Apply if > 0
+    float focusDistance;  // Apply if > 0
     D3TrackingData d3Tracking;
 } CameraData;
 
@@ -145,7 +144,6 @@ typedef struct
     double tTracked;
     CameraData camera;
 } CameraResponseData;
-
 
 typedef struct
 {
@@ -241,6 +239,8 @@ enum RemoteParameterType
     RS_PARAMETER_POSE,      // 4x4 TR matrix
     RS_PARAMETER_TRANSFORM, // 4x4 TRS matrix
     RS_PARAMETER_TEXT,
+    RS_PARAMETER_EVENT,
+    RS_PARAMETER_SKELETON,
 };
 
 enum RemoteParameterDmxType
@@ -315,6 +315,7 @@ typedef struct
 {
     const char* engineName;
     const char* engineVersion;
+    const char* pluginVersion;
     const char* info;
     Channels channels;
     Scenes scenes;
@@ -330,8 +331,8 @@ typedef struct
 
 #define D3_RENDER_STREAM_API __declspec( dllexport )
 
-#define RENDER_STREAM_VERSION_MAJOR 1
-#define RENDER_STREAM_VERSION_MINOR 32
+#define RENDER_STREAM_VERSION_MAJOR 2
+#define RENDER_STREAM_VERSION_MINOR 0
 
 #define RENDER_STREAM_VERSION_STRING stringify(RENDER_STREAM_VERSION_MAJOR) "." stringify(RENDER_STREAM_VERSION_MINOR)
 
@@ -350,6 +351,40 @@ typedef struct
     uint32_t textDataCount;
     const char** textData;
 } FrameResponseData;
+
+typedef struct
+{
+    float x, y, z;
+    float rx, ry, rz, rw;
+} Transform;
+
+typedef struct
+{
+    uint64_t id;
+    Transform transform;
+} SkeletonJointPose;
+
+typedef struct
+{
+    uint64_t id;
+    uint64_t parentId;
+    Transform transform;
+} SkeletonJointDesc;
+
+typedef struct
+{
+    uint32_t version;
+    SkeletonJointDesc* joints;
+} SkeletonLayout;
+
+typedef struct
+{
+    uint64_t layoutId;
+    uint32_t layoutVersion;
+    char reservedBytes[8];
+    Transform rootTransform;
+    SkeletonJointPose* joints;
+} SkeletonPose;
 
 // isolated functions, do not require init prior to use
 extern "C" D3_RENDER_STREAM_API void rs_registerLoggingFunc(logger_t logger);
