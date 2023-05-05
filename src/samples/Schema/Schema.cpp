@@ -68,6 +68,7 @@ int mainImpl(int argc, char** argv)
     ScopedSchema scoped; // C++ helper that cleans up mallocs and strdups
     scoped.schema.engineName = _strdup("Schema sample");
     scoped.schema.engineVersion = _strdup(("RS" + std::to_string(RENDER_STREAM_VERSION_MAJOR) + "." + std::to_string(RENDER_STREAM_VERSION_MINOR)).c_str());
+    scoped.schema.pluginVersion = _strdup(("RS" + std::to_string(RENDER_STREAM_VERSION_MAJOR) + "." + std::to_string(RENDER_STREAM_VERSION_MINOR) + "-Samples").c_str());
     scoped.schema.info = _strdup("");
     scoped.schema.channels.nChannels = static_cast<uint32_t>(channels.size());
     scoped.schema.channels.channels = channels.data();
