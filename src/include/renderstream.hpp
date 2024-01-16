@@ -123,12 +123,26 @@ public:
 
     inline void setNewStatusMessage(const char* message);
 
+    inline void setLoggingFunction(logger_t func);
+    inline void setErrorLoggingFunction(logger_t func);
+    inline void setVerboseLoggingFunction(logger_t func);
+
 private:
     friend class ParameterValues; // uses the various low level parameter accessors
     HMODULE m_rsDll;
     std::vector<uint8_t> m_streamDescriptionsMemory;
     std::vector<uint8_t> m_schemaMemory;
 
+    logger_t m_loggingFunc = nullptr;
+    logger_t m_errorLoggingFunc = nullptr;
+    logger_t m_verboseLoggingFunc = nullptr;
+
+    DECL_FN(registerLogging);
+    DECL_FN(registerErrorLogging);
+    DECL_FN(registerVerboseLogging);
+    DECL_FN(unregisterLogging);
+    DECL_FN(unregisterErrorLogging);
+    DECL_FN(unregisterVerboseLogging);
     DECL_FN(initialise);
     DECL_FN(initialiseGpGpuWithDX11Device);
     DECL_FN(initialiseGpGpuWithDX11Resource);
@@ -191,6 +205,12 @@ void RenderStream::initialise()
         throw std::runtime_error(std::string("Failed to load dll: '") + buffer + "'");
     }
 
+    LOAD_FN(registerLogging);
+    LOAD_FN(registerErrorLogging);
+    LOAD_FN(registerVerboseLogging);
+    LOAD_FN(unregisterLogging);
+    LOAD_FN(unregisterErrorLogging);
+    LOAD_FN(unregisterVerboseLogging);
     LOAD_FN(initialise);
     LOAD_FN(initialiseGpGpuWithDX11Device);
     LOAD_FN(initialiseGpGpuWithDX11Resource);
@@ -210,6 +230,21 @@ void RenderStream::initialise()
     LOAD_FN(sendFrame2);
     LOAD_FN(setNewStatusMessage);
     LOAD_FN(shutdown);
+
+    if (m_loggingFunc)
+    {
+        checkRs(m_registerLogging(m_loggingFunc), "register logging");
+    }
+
+    if (m_errorLoggingFunc)
+    {
+        checkRs(m_registerErrorLogging(m_errorLoggingFunc), "register error logging");
+    }
+
+    if (m_verboseLoggingFunc)
+    {
+        checkRs(m_registerVerboseLogging(m_verboseLoggingFunc), "register verbose logging");
+    }
 
     checkRs(m_initialise(RENDER_STREAM_VERSION_MAJOR, RENDER_STREAM_VERSION_MINOR), "initialise");
 }
@@ -343,6 +378,57 @@ void RenderStream::sendFrame(StreamHandle stream, const SenderFrame& frame, cons
 void RenderStream::setNewStatusMessage(const char* message)
 {
     checkRs(m_setNewStatusMessage(message), __FUNCTION__);
+}
+
+void RenderStream::setLoggingFunction(logger_t func) {
+    m_loggingFunc = func;
+    if (!m_rsDll)
+    {
+        return;
+    }
+
+    if (func)
+    {
+        checkRs(m_registerLogging(m_loggingFunc), "register logging");
+    }
+    else
+    {
+        checkRs(m_unregisterLogging(), "unregister logging");
+    }
+}
+
+void RenderStream::setErrorLoggingFunction(logger_t func) {
+    m_errorLoggingFunc = func;
+    if (!m_rsDll)
+    {
+        return;
+    }
+
+    if (func)
+    {
+        checkRs(m_registerErrorLogging(m_errorLoggingFunc), "register error logging");
+    }
+    else
+    {
+        checkRs(m_unregisterErrorLogging(), "unregister error logging");
+    }
+}
+
+void RenderStream::setVerboseLoggingFunction(logger_t func) {
+    m_verboseLoggingFunc = func;
+    if (!m_rsDll)
+    {
+        return;
+    }
+
+    if (func)
+    {
+        checkRs(m_registerVerboseLogging(m_verboseLoggingFunc), "register verbose logging");
+    } 
+    else
+    {
+        checkRs(m_unregisterVerboseLogging(), "unregister verbose logging");
+    }
 }
 
 struct ScopedSchema
