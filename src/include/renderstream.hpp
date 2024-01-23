@@ -137,12 +137,12 @@ private:
     logger_t m_errorLoggingFunc = nullptr;
     logger_t m_verboseLoggingFunc = nullptr;
 
-    DECL_FN(registerLogging);
-    DECL_FN(registerErrorLogging);
-    DECL_FN(registerVerboseLogging);
-    DECL_FN(unregisterLogging);
-    DECL_FN(unregisterErrorLogging);
-    DECL_FN(unregisterVerboseLogging);
+    DECL_FN(registerLoggingFunc);
+    DECL_FN(registerErrorLoggingFunc);
+    DECL_FN(registerVerboseLoggingFunc);
+    DECL_FN(unregisterLoggingFunc);
+    DECL_FN(unregisterErrorLoggingFunc);
+    DECL_FN(unregisterVerboseLoggingFunc);
     DECL_FN(initialise);
     DECL_FN(initialiseGpGpuWithDX11Device);
     DECL_FN(initialiseGpGpuWithDX11Resource);
@@ -205,12 +205,12 @@ void RenderStream::initialise()
         throw std::runtime_error(std::string("Failed to load dll: '") + buffer + "'");
     }
 
-    LOAD_FN(registerLogging);
-    LOAD_FN(registerErrorLogging);
-    LOAD_FN(registerVerboseLogging);
-    LOAD_FN(unregisterLogging);
-    LOAD_FN(unregisterErrorLogging);
-    LOAD_FN(unregisterVerboseLogging);
+    LOAD_FN(registerLoggingFunc);
+    LOAD_FN(registerErrorLoggingFunc);
+    LOAD_FN(registerVerboseLoggingFunc);
+    LOAD_FN(unregisterLoggingFunc);
+    LOAD_FN(unregisterErrorLoggingFunc);
+    LOAD_FN(unregisterVerboseLoggingFunc);
     LOAD_FN(initialise);
     LOAD_FN(initialiseGpGpuWithDX11Device);
     LOAD_FN(initialiseGpGpuWithDX11Resource);
@@ -233,17 +233,17 @@ void RenderStream::initialise()
 
     if (m_loggingFunc)
     {
-        checkRs(m_registerLogging(m_loggingFunc), "register logging");
+        m_registerLoggingFunc(m_loggingFunc);
     }
 
     if (m_errorLoggingFunc)
     {
-        checkRs(m_registerErrorLogging(m_errorLoggingFunc), "register error logging");
+        m_registerErrorLoggingFunc(m_errorLoggingFunc);
     }
 
     if (m_verboseLoggingFunc)
     {
-        checkRs(m_registerVerboseLogging(m_verboseLoggingFunc), "register verbose logging");
+        m_registerVerboseLoggingFunc(m_verboseLoggingFunc);
     }
 
     checkRs(m_initialise(RENDER_STREAM_VERSION_MAJOR, RENDER_STREAM_VERSION_MINOR), "initialise");
@@ -389,11 +389,11 @@ void RenderStream::setLoggingFunction(logger_t func) {
 
     if (func)
     {
-        checkRs(m_registerLogging(m_loggingFunc), "register logging");
+        m_registerLoggingFunc(m_loggingFunc);
     }
     else
     {
-        checkRs(m_unregisterLogging(), "unregister logging");
+        m_unregisterLoggingFunc();
     }
 }
 
@@ -406,11 +406,11 @@ void RenderStream::setErrorLoggingFunction(logger_t func) {
 
     if (func)
     {
-        checkRs(m_registerErrorLogging(m_errorLoggingFunc), "register error logging");
+        m_registerErrorLoggingFunc(m_errorLoggingFunc);
     }
     else
     {
-        checkRs(m_unregisterErrorLogging(), "unregister error logging");
+        m_unregisterErrorLoggingFunc();
     }
 }
 
@@ -423,11 +423,11 @@ void RenderStream::setVerboseLoggingFunction(logger_t func) {
 
     if (func)
     {
-        checkRs(m_registerVerboseLogging(m_verboseLoggingFunc), "register verbose logging");
+        m_registerVerboseLoggingFunc(m_verboseLoggingFunc);
     } 
     else
     {
-        checkRs(m_unregisterVerboseLogging(), "unregister verbose logging");
+        m_unregisterVerboseLoggingFunc();
     }
 }
 
