@@ -90,23 +90,33 @@ struct SyncData
 };
 #pragma pack(pop)
 
-void receiveSyncData(RenderStream& rs, SyncData& data)
+// Simply copy because we are syncing POD data.
+void synchroniseEngineState(RenderStream& rs, SyncData& data)
 {
-    auto output = rs.receiveFollowerData();
-    if (std::holds_alternative<RS_ERROR>(output))
+    if (rs.isController())
     {
-        // Internal error, or we somehow got here without engine sync.
-        return;
+        // Send synchronization data for the frame request we got from rs_awaitFrameData.
+        rs.sendFollowerData(&data, sizeof(data));
     }
-
-    std::vector<char>& buffer = std::get<std::vector<char>>(output);
-    if (buffer.size() != sizeof(data))
+    else
     {
-        // Invalid data
-        return;
-    }
+        // Fetch the synchronization data attached to the frame request we got from rs_awaitFrameData.
+        auto output = rs.receiveFollowerData();
+        if (std::holds_alternative<RS_ERROR>(output))
+        {
+            // Internal error, or we somehow got here without engine sync.
+            return;
+        }
 
-    data = *reinterpret_cast<SyncData*>(buffer.data());
+        auto& buffer = std::get<std::basic_string_view<char>>(output);
+        if (buffer.size() != sizeof(SyncData))
+        {
+            // Invalid data
+            return;
+        }
+
+        data = *reinterpret_cast<const SyncData*>(buffer.data());
+    }
 }
 
 int mainImpl()
@@ -268,16 +278,7 @@ int mainImpl()
         // Handle engine synchronization.
         if (rs.engineSyncEnabled())
         {
-            if (rs.isController())
-            {
-                // Send synchronization data for the frame request we got from rs_awaitFrameData.
-                rs.sendFollowerData(reinterpret_cast<char*>(&syncData), sizeof(syncData));
-            }
-            else
-            {
-                // Fetch the synchronization data attached to the frame request we got from rs_awaitFrameData.
-                receiveSyncData(rs, syncData);
-            }
+            synchroniseEngineState(rs, syncData);
         }
 
         // Respond to frame request

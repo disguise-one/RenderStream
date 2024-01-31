@@ -419,8 +419,6 @@ extern "C" D3_RENDER_STREAM_API RS_ERROR rs_setSchema(/*InOut*/Schema* schema); 
 extern "C" D3_RENDER_STREAM_API RS_ERROR rs_getStreams(/*Out*/StreamDescriptions* streams, /*InOut*/uint32_t* nBytes); // Populate streams into a buffer of size (nBytes) starting at (streams)
 
 extern "C" D3_RENDER_STREAM_API RS_ERROR rs_awaitFrameData(int timeoutMs, /*Out*/FrameData * data);  // waits for any asset, any stream to request a frame, provides the parameters for that frame.
-extern "C" D3_RENDER_STREAM_API RS_ERROR rs_setFollower(int isFollower); // Used to mark this node as relying on alternative mechanisms to distribute FrameData. Users must provide correct CameraResponseData to sendFrame, and call rs_beginFollowerFrame at the start of the frame, where awaitFrame would normally be called.
-extern "C" D3_RENDER_STREAM_API RS_ERROR rs_beginFollowerFrame(double tTracked); // Pass the engine-distributed tTracked value in, if you have called rs_setFollower(1) otherwise do not call this function.
 
 extern "C" D3_RENDER_STREAM_API RS_ERROR rs_getFrameParameters(uint64_t schemaHash, /*Out*/void* outParameterData, uint64_t outParameterDataSize);  // returns the remote parameters for this frame.
 extern "C" D3_RENDER_STREAM_API RS_ERROR rs_getFrameImageData(uint64_t schemaHash, /*Out*/ImageFrameData* outParameterData, uint64_t outParameterDataCount);  // returns the remote image data for this frame.
@@ -436,14 +434,14 @@ extern "C" D3_RENDER_STREAM_API RS_ERROR rs_logToD3(const char* str); // Transmi
 extern "C" D3_RENDER_STREAM_API RS_ERROR rs_sendProfilingData(ProfilingEntry * entries, int count);
 extern "C" D3_RENDER_STREAM_API RS_ERROR rs_setNewStatusMessage(const char* msg);
 
-extern "C" D3_RENDER_STREAM_API RS_ERROR rs_isController(bool* value);
-extern "C" D3_RENDER_STREAM_API RS_ERROR rs_engineSyncEnabled(bool* value);
+extern "C" D3_RENDER_STREAM_API RS_ERROR rs_isController(int* value);
+extern "C" D3_RENDER_STREAM_API RS_ERROR rs_engineSyncEnabled(int* value);
 
 extern "C" D3_RENDER_STREAM_API RS_ERROR rs_awaitFrameData(int timeoutMs, FrameData* data);
-extern "C" D3_RENDER_STREAM_API RS_ERROR rs_receiveFollowerData(const char* buffer, int* bufferSize);
-extern "C" D3_RENDER_STREAM_API RS_ERROR rs_sendFollowerData(const char* buffer, int bufferSize);
+extern "C" D3_RENDER_STREAM_API RS_ERROR rs_receiveFollowerData(void** buffer, int* bufferSize);
+extern "C" D3_RENDER_STREAM_API RS_ERROR rs_sendFollowerData(const void* buffer, int bufferSize);
 
-extern "C" D3_RENDER_STREAM_API RS_ERROR rs_sendInteractionData(const char* buffer, int bufferSize);
-extern "C" D3_RENDER_STREAM_API RS_ERROR rs_receiveInteractionData(const char* buffer, int* bufferSize);
+extern "C" D3_RENDER_STREAM_API RS_ERROR rs_receiveInteractionData(void** buffer, int* bufferSize);
+extern "C" D3_RENDER_STREAM_API RS_ERROR rs_sendInteractionData(const void* buffer, int bufferSize);
 
 #endif

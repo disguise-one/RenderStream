@@ -125,10 +125,10 @@ public:
     inline bool isController();
     inline bool engineSyncEnabled();
 
-    inline std::variant<std::vector<char>, RS_ERROR> receiveFollowerData();
-    inline RS_ERROR sendFollowerData(const char* buffer, int bufferSize);
+    inline std::variant<std::basic_string_view<char>, RS_ERROR> receiveFollowerData();
+    inline RS_ERROR sendFollowerData(const void* buffer, int bufferSize);
 
-    inline std::variant<std::vector<char>, RS_ERROR> receiveInteractionData();
+    inline std::variant<std::basic_string_view<char>, RS_ERROR> receiveInteractionData();
     inline RS_ERROR sendInteractionData(const char* buffer, int bufferSize);
 
     inline void setNewStatusMessage(const char* message);
@@ -170,7 +170,6 @@ private:
     DECL_FN(awaitFrameData);
     DECL_FN(getFrameCamera);
     DECL_FN(sendFrame2);
-    DECL_FN(beginFollowerFrame);
     DECL_FN(isController);
     DECL_FN(engineSyncEnabled);
     DECL_FN(receiveFollowerData);
@@ -245,7 +244,6 @@ void RenderStream::initialise()
     LOAD_FN(awaitFrameData);
     LOAD_FN(getFrameCamera);
     LOAD_FN(sendFrame2);
-    LOAD_FN(beginFollowerFrame);
     LOAD_FN(isController);
     LOAD_FN(engineSyncEnabled);
     LOAD_FN(awaitFrameData);
@@ -400,58 +398,49 @@ void RenderStream::sendFrame(StreamHandle stream, const SenderFrame& frame, cons
     checkRs(m_sendFrame2(stream, &frame, &response), __FUNCTION__);
 }
 
-RS_ERROR RenderStream::beginFollowerFrame(double tTracked)
-{
-    return m_beginFollowerFrame(tTracked);
-}
-
 bool RenderStream::isController()
 {
-    bool value;
+    int value;
     checkRs(m_isController(&value), __FUNCTION__);
-    return value;
+    return value != 0;
 }
 
 bool RenderStream::engineSyncEnabled()
 {
-    bool value;
+    int value;
     checkRs(m_engineSyncEnabled(&value), __FUNCTION__);
-    return value;
+    return value != 0;
 }
 
-std::variant<std::vector<char>, RS_ERROR> RenderStream::receiveFollowerData()
+std::variant<std::basic_string_view<char>, RS_ERROR> RenderStream::receiveFollowerData()
 {
-    int size;
-    RS_ERROR result = m_receiveFollowerData(nullptr, &size);
+    int size = 0;
+    void* data = nullptr;
+    RS_ERROR result = m_receiveFollowerData(&data, &size);
     if (result != RS_ERROR_SUCCESS)
     {
         return result;
     }
 
-    std::vector<char> data;
-    data.resize(size);
-    m_receiveFollowerData(data.data(), &size);
-    return data;
+    return std::basic_string_view<char>(static_cast<char*>(data), size);
 }
 
-RS_ERROR RenderStream::sendFollowerData(const char* buffer, int bufferSize)
+RS_ERROR RenderStream::sendFollowerData(const void* buffer, int bufferSize)
 {
     return m_sendFollowerData(buffer, bufferSize);
 }
 
-std::variant<std::vector<char>, RS_ERROR> RenderStream::receiveInteractionData()
+std::variant<std::basic_string_view<char>, RS_ERROR> RenderStream::receiveInteractionData()
 {
-    int size;
-    RS_ERROR result = m_receiveInteractionData(nullptr, &size);
+    int size = 0;
+    void* data = nullptr;
+    RS_ERROR result = m_receiveInteractionData(&data, &size);
     if (result != RS_ERROR_SUCCESS)
     {
         return result;
     }
 
-    std::vector<char> data;
-    data.resize(size);
-    m_receiveInteractionData(data.data(), &size);
-    return data;
+    return std::basic_string_view<char>(static_cast<char*>(data), size);
 }
 
 RS_ERROR RenderStream::sendInteractionData(const char* buffer, int bufferSize)
