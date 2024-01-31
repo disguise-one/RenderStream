@@ -58,7 +58,7 @@ Engine sync is an optional extension to RenderStream. You can verify it's enable
 - Call `rs_engineSyncEnabled` to validate the cluster is using engine synchronisation.
 - Call `rs_isController` to validate the node is a controller. This can change at runtime due to failover processing.
 - Perform any simulation or other non-deterministic or state-mutating processing.
-- Serialise the engine state as desired and pass that data to `rs_sendFollowerData.
+- Serialise the engine state as desired and pass that data to `rs_sendFollowerData`.
 - Render the frame using `rs_getFrameCamera` and calls `rs_sendFrame` as normal.
 
 ### Follower processing logic
