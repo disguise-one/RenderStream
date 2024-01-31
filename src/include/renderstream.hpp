@@ -120,6 +120,16 @@ public:
     inline CameraData getFrameCamera(StreamHandle stream);
 
     inline void sendFrame(StreamHandle stream, const SenderFrame& frame, const FrameResponseData& response);
+    inline RS_ERROR beginFollowerFrame(double tTracked);
+
+    inline bool isController();
+    inline bool engineSyncEnabled();
+
+    inline std::variant<std::vector<char>, RS_ERROR> receiveFollowerData();
+    inline RS_ERROR sendFollowerData(const char* buffer, int bufferSize);
+
+    inline std::variant<std::vector<char>, RS_ERROR> receiveInteractionData();
+    inline RS_ERROR sendInteractionData(const char* buffer, int bufferSize);
 
     inline void setNewStatusMessage(const char* message);
 
@@ -160,6 +170,13 @@ private:
     DECL_FN(awaitFrameData);
     DECL_FN(getFrameCamera);
     DECL_FN(sendFrame2);
+    DECL_FN(beginFollowerFrame);
+    DECL_FN(isController);
+    DECL_FN(engineSyncEnabled);
+    DECL_FN(receiveFollowerData);
+    DECL_FN(sendFollowerData);
+    DECL_FN(sendInteractionData);
+    DECL_FN(receiveInteractionData);
     DECL_FN(setNewStatusMessage);
     DECL_FN(shutdown);
 };
@@ -228,6 +245,14 @@ void RenderStream::initialise()
     LOAD_FN(awaitFrameData);
     LOAD_FN(getFrameCamera);
     LOAD_FN(sendFrame2);
+    LOAD_FN(beginFollowerFrame);
+    LOAD_FN(isController);
+    LOAD_FN(engineSyncEnabled);
+    LOAD_FN(awaitFrameData);
+    LOAD_FN(receiveFollowerData);
+    LOAD_FN(sendFollowerData);
+    LOAD_FN(sendInteractionData);
+    LOAD_FN(receiveInteractionData);
     LOAD_FN(setNewStatusMessage);
     LOAD_FN(shutdown);
 
@@ -373,6 +398,65 @@ CameraData RenderStream::getFrameCamera(StreamHandle stream)
 void RenderStream::sendFrame(StreamHandle stream, const SenderFrame& frame, const FrameResponseData& response)
 {
     checkRs(m_sendFrame2(stream, &frame, &response), __FUNCTION__);
+}
+
+RS_ERROR RenderStream::beginFollowerFrame(double tTracked)
+{
+    return m_beginFollowerFrame(tTracked);
+}
+
+bool RenderStream::isController()
+{
+    bool value;
+    checkRs(m_isController(&value), __FUNCTION__);
+    return value;
+}
+
+bool RenderStream::engineSyncEnabled()
+{
+    bool value;
+    checkRs(m_engineSyncEnabled(&value), __FUNCTION__);
+    return value;
+}
+
+std::variant<std::vector<char>, RS_ERROR> RenderStream::receiveFollowerData()
+{
+    int size;
+    RS_ERROR result = m_receiveFollowerData(nullptr, &size);
+    if (result != RS_ERROR_SUCCESS)
+    {
+        return result;
+    }
+
+    std::vector<char> data;
+    data.resize(size);
+    m_receiveFollowerData(data.data(), &size);
+    return data;
+}
+
+RS_ERROR RenderStream::sendFollowerData(const char* buffer, int bufferSize)
+{
+    return m_sendFollowerData(buffer, bufferSize);
+}
+
+std::variant<std::vector<char>, RS_ERROR> RenderStream::receiveInteractionData()
+{
+    int size;
+    RS_ERROR result = m_receiveInteractionData(nullptr, &size);
+    if (result != RS_ERROR_SUCCESS)
+    {
+        return result;
+    }
+
+    std::vector<char> data;
+    data.resize(size);
+    m_receiveInteractionData(data.data(), &size);
+    return data;
+}
+
+RS_ERROR RenderStream::sendInteractionData(const char* buffer, int bufferSize)
+{
+    return m_sendInteractionData(buffer, bufferSize);
 }
 
 void RenderStream::setNewStatusMessage(const char* message)

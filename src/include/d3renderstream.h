@@ -75,6 +75,8 @@ enum RS_ERROR
 
     RS_ERROR_QUIT,
 
+    RS_ERROR_ENGINE_DATA_AVAILABLE,
+
     RS_ERROR_UNSPECIFIED
 };
 
@@ -433,5 +435,15 @@ extern "C" D3_RENDER_STREAM_API RS_ERROR rs_releaseImage2(const SenderFrame* fra
 extern "C" D3_RENDER_STREAM_API RS_ERROR rs_logToD3(const char* str); // Transmit log message over network. New line automatically appended
 extern "C" D3_RENDER_STREAM_API RS_ERROR rs_sendProfilingData(ProfilingEntry * entries, int count);
 extern "C" D3_RENDER_STREAM_API RS_ERROR rs_setNewStatusMessage(const char* msg);
+
+extern "C" D3_RENDER_STREAM_API RS_ERROR rs_isController(bool* value);
+extern "C" D3_RENDER_STREAM_API RS_ERROR rs_engineSyncEnabled(bool* value);
+
+extern "C" D3_RENDER_STREAM_API RS_ERROR rs_awaitFrameData(int timeoutMs, FrameData* data);
+extern "C" D3_RENDER_STREAM_API RS_ERROR rs_receiveFollowerData(const char* buffer, int* bufferSize);
+extern "C" D3_RENDER_STREAM_API RS_ERROR rs_sendFollowerData(const char* buffer, int bufferSize);
+
+extern "C" D3_RENDER_STREAM_API RS_ERROR rs_sendInteractionData(const char* buffer, int bufferSize);
+extern "C" D3_RENDER_STREAM_API RS_ERROR rs_receiveInteractionData(const char* buffer, int* bufferSize);
 
 #endif
