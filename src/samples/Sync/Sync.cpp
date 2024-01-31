@@ -73,12 +73,41 @@ static constexpr UINT cubeDrawCalls[] =
     36
 };
 
-
-
 struct ConstantBufferStruct
 {
     DirectX::XMMATRIX worldViewProjection;
+    DirectX::XMFLOAT4 color;
 };
+
+#pragma pack(push, 4)
+struct SyncData
+{
+    FrameData frameData;
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+    uint8_t a;
+};
+#pragma pack(pop)
+
+void receiveSyncData(RenderStream& rs, SyncData& data)
+{
+    auto output = rs.receiveFollowerData();
+    if (std::holds_alternative<RS_ERROR>(output))
+    {
+        // Internal error, or we somehow got here without engine sync.
+        return;
+    }
+
+    std::vector<char>& buffer = std::get<std::vector<char>>(output);
+    if (buffer.size() != sizeof(data))
+    {
+        // Invalid data
+        return;
+    }
+
+    data = *reinterpret_cast<SyncData*>(buffer.data());
+}
 
 int mainImpl()
 {
@@ -174,6 +203,7 @@ int mainImpl()
         Microsoft::WRL::ComPtr<ID3D11RenderTargetView> view;
     };
     std::unordered_map<StreamHandle, RenderTarget> renderTargets;
+    SyncData syncData;
     while (true)
     {
         // Wait for a frame request
@@ -227,8 +257,30 @@ int mainImpl()
             }
         }
 
-        // Respond to frame request
         const FrameData& frameData = std::get<FrameData>(awaitResult);
+
+        // This will get overwritten on followers down below, can put this in an rs.isController() if block if you want to see if engine sync works.
+        syncData.r = (char)(((int)syncData.r + 1) % 256);
+        syncData.g = 128;
+        syncData.b = 0;
+        syncData.a = 255;
+
+        // Handle engine synchronization.
+        if (rs.engineSyncEnabled())
+        {
+            if (rs.isController())
+            {
+                // Send synchronization data for the frame request we got from rs_awaitFrameData.
+                rs.sendFollowerData(reinterpret_cast<char*>(&syncData), sizeof(syncData));
+            }
+            else
+            {
+                // Fetch the synchronization data attached to the frame request we got from rs_awaitFrameData.
+                receiveSyncData(rs, syncData);
+            }
+        }
+
+        // Respond to frame request
         const size_t numStreams = header ? header->nStreams : 0;
         for (size_t i = 0; i < numStreams; ++i)
         {
@@ -311,6 +363,10 @@ int mainImpl()
                 const DirectX::XMMATRIX projection = orthographic ? DirectX::XMMatrixOrthographicOffCenterLH(l, r, b, t, nearZ, farZ) : DirectX::XMMatrixPerspectiveOffCenterLH(l * nearZ, r * nearZ, b * nearZ, t * nearZ, nearZ, farZ);
 
                 constantBufferData.worldViewProjection = DirectX::XMMatrixTranspose(world * view * projection * overscan);
+                constantBufferData.color.x = ((float)syncData.r) / 255.0f;
+                constantBufferData.color.y = ((float)syncData.g) / 255.0f;
+                constantBufferData.color.z = ((float)syncData.b) / 255.0f;
+                constantBufferData.color.w = ((float)syncData.a) / 255.0f;
                 context->UpdateSubresource(constantBuffer.Get(), 0, nullptr, &constantBufferData, 0, 0);
 
                 // Draw cube
