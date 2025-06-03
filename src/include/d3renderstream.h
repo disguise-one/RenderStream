@@ -250,6 +250,19 @@ enum RemoteParameterDmxType
     RS_DMX_16_BE,
 };
 
+enum RSColourSpace
+{
+    RS_COLOUR_SPACE_UNKNOWN,
+    RS_COLOUR_SPACE_sRGBCurve,
+    // All colour spaces are linear by default
+    RS_COLOUR_SPACE_sRGB,
+    RS_COLOUR_SPACE_Rec2020,
+    RS_COLOUR_SPACE_ACES2065,
+    RS_COLOUR_SPACE_ACEScg,
+    RS_COLOUR_SPACE_P3D65,
+    RS_COLOUR_SPACE_P3DCI,
+};
+
 typedef struct
 {
     float min;
@@ -317,6 +330,7 @@ typedef struct
     const char* engineVersion;
     const char* pluginVersion;
     const char* info;
+    RSColourSpace workingColourSpace;
     Channels channels;
     Scenes scenes;
 } Schema;
@@ -331,7 +345,7 @@ typedef struct
 
 #define D3_RENDER_STREAM_API __declspec( dllexport )
 
-#define RENDER_STREAM_VERSION_MAJOR 2
+#define RENDER_STREAM_VERSION_MAJOR 3
 #define RENDER_STREAM_VERSION_MINOR 0
 
 #define RENDER_STREAM_VERSION_STRING stringify(RENDER_STREAM_VERSION_MAJOR) "." stringify(RENDER_STREAM_VERSION_MINOR)

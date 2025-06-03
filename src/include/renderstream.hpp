@@ -497,6 +497,7 @@ private:
         schema.engineVersion = nullptr;
         schema.pluginVersion = nullptr;
         schema.info = nullptr;
+        schema.workingColourSpace = RSColourSpace::RS_COLOUR_SPACE_UNKNOWN;
         schema.channels.nChannels = 0;
         schema.channels.channels = nullptr;
         schema.scenes.nScenes = 0;
