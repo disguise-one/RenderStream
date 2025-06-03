@@ -70,6 +70,7 @@ int mainImpl(int argc, char** argv)
     scoped.schema.engineVersion = _strdup(("RS" + std::to_string(RENDER_STREAM_VERSION_MAJOR) + "." + std::to_string(RENDER_STREAM_VERSION_MINOR)).c_str());
     scoped.schema.pluginVersion = _strdup(("RS" + std::to_string(RENDER_STREAM_VERSION_MAJOR) + "." + std::to_string(RENDER_STREAM_VERSION_MINOR) + "-Samples").c_str());
     scoped.schema.info = _strdup("");
+    scoped.schema.workingColourSpace = RSColourSpace::RS_COLOUR_SPACE_UNKNOWN;
     scoped.schema.channels.nChannels = static_cast<uint32_t>(channels.size());
     scoped.schema.channels.channels = channels.data();
     scoped.schema.scenes.nScenes = 2;
