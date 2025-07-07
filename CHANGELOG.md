@@ -1,3 +1,8 @@
+# RS3.0
+
+Compatible with disguise designer version r31.1 and above.
+* Added project working colour space in schema
+
 # RS2.0
 Compatible with disguise designer version r25.0 and above.
 * Removed unused parameters from D3TrackingData
