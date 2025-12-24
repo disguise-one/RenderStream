@@ -5,6 +5,7 @@ Plugins are available for
 * Unreal Engine (https://github.com/disguise-one/RenderStream-UE)
 * Unity (https://github.com/disguise-one/RenderStream-Unity)
 * Notch (bundled with disguise software)
+* TouchDesigner (https://derivative.ca/UserGuide/RenderStream)
 
 # Getting it
 The RenderStream DLL is distributed as a 64-bit Windows DLL as part of the disguise software, available at https://download.disguise.one/
