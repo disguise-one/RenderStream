@@ -1,3 +1,8 @@
+# RS3.1
+
+Compatible with disguise designer version rXX.X and above.
+* Added array parameter type and element count in schema
+
 # RS3.0
 
 Compatible with disguise designer version r31.1 and above.

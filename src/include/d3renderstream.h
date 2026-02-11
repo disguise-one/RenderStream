@@ -241,6 +241,7 @@ enum RemoteParameterType
     RS_PARAMETER_TEXT,
     RS_PARAMETER_EVENT,
     RS_PARAMETER_SKELETON,
+    RS_PARAMETER_ARRAY,
 };
 
 enum RemoteParameterDmxType
@@ -299,6 +300,8 @@ typedef struct
     uint32_t nOptions;
     const char** options;
 
+    uint32_t nElements;
+
     int32_t dmxOffset; // DMX channel offset or auto (-1)
     RemoteParameterDmxType dmxType;
     uint32_t flags; // REMOTEPARAMETER_FLAGS
@@ -346,7 +349,7 @@ typedef struct
 #define D3_RENDER_STREAM_API __declspec( dllexport )
 
 #define RENDER_STREAM_VERSION_MAJOR 3
-#define RENDER_STREAM_VERSION_MINOR 0
+#define RENDER_STREAM_VERSION_MINOR 1
 
 #define RENDER_STREAM_VERSION_STRING stringify(RENDER_STREAM_VERSION_MAJOR) "." stringify(RENDER_STREAM_VERSION_MINOR)
 

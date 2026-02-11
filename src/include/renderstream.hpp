@@ -53,7 +53,13 @@ public:
     T get(const std::string& key);
 
 private:
-    inline std::tuple<size_t, RemoteParameterType> iKey(const std::string& key);
+    struct KeyVal
+    {
+        size_t startIdx;
+        size_t size;
+        RemoteParameterType type;
+    };
+    inline KeyVal iKey(const std::string& key);
 
     class RenderStream* m_rs;
     const RemoteParameters* m_parameters;
@@ -520,6 +526,8 @@ ParameterValues::ParameterValues(RenderStream& rs, const RemoteParameters& scene
 
         if (param.type == RS_PARAMETER_NUMBER)
             nFloats++;
+        else if (param.type == RS_PARAMETER_ARRAY)
+            nFloats += param.nElements;
         else if (param.type == RS_PARAMETER_IMAGE)
             nImages++;
         else if (param.type == RS_PARAMETER_POSE)
@@ -539,7 +547,7 @@ ParameterValues::ParameterValues(RenderStream& rs, const RemoteParameters& scene
     checkRs(m_rs->m_getFrameImageData(m_parameters->hash, m_imageValues.data(), nImages), "get frame image data");
 }
 
-std::tuple<size_t, RemoteParameterType> ParameterValues::iKey(const std::string& key)
+ParameterValues::KeyVal ParameterValues::iKey(const std::string& key)
 {
     size_t iFloat = 0, iImage = 0, iText = 0;
     for (uint32_t iParam = 0; iParam < m_parameters->nParameters; ++iParam)
@@ -552,21 +560,25 @@ std::tuple<size_t, RemoteParameterType> ParameterValues::iKey(const std::string&
         if (key == param.key)
         {
             if (param.type == RS_PARAMETER_NUMBER)
-                return { iFloat, RS_PARAMETER_NUMBER };
+                return { iFloat, 1, RS_PARAMETER_NUMBER };
+            else if (param.type == RS_PARAMETER_ARRAY)
+                return { iFloat, param.nElements, RS_PARAMETER_ARRAY };
             else if (param.type == RS_PARAMETER_IMAGE)
-                return { iImage, RS_PARAMETER_IMAGE };
+                return { iImage, 0, RS_PARAMETER_IMAGE };
             else if (param.type == RS_PARAMETER_POSE)
-                return { iFloat, RS_PARAMETER_POSE };
+                return { iFloat, 16, RS_PARAMETER_POSE };
             else if (param.type == RS_PARAMETER_TRANSFORM)
-                return { iFloat, RS_PARAMETER_TRANSFORM };
+                return { iFloat, 16, RS_PARAMETER_TRANSFORM };
             else if (param.type == RS_PARAMETER_TEXT)
-                return { iText, RS_PARAMETER_TEXT };
+                return { iText, 0, RS_PARAMETER_TEXT };
             else
                 throw std::logic_error("Unhandled parameter type");
         }
 
         if (param.type == RS_PARAMETER_NUMBER)
             iFloat++;
+        else if (param.type == RS_PARAMETER_ARRAY)
+            iFloat += param.nElements;
         else if (param.type == RS_PARAMETER_IMAGE)
             iImage++;
         else if (param.type == RS_PARAMETER_POSE)
@@ -592,16 +604,27 @@ std::tuple<size_t, RemoteParameterType> ParameterValues::iKey(const std::string&
 template <>
 inline float ParameterValues::get(const std::string& key)
 {
-    auto [index, type] = iKey(key);
+    auto [index, _, type] = iKey(key);
     if (type != RS_PARAMETER_NUMBER)
         throw std::runtime_error("Key is not a number");
     return m_floatValues[index];
 }
 
 template <>
+inline std::vector<float> ParameterValues::get(const std::string& key)
+{
+    auto [index, size, type] = iKey(key);
+    if (type != RS_PARAMETER_ARRAY)
+        throw std::runtime_error("Key is not an array");
+    std::vector<float> out(size, 0);
+    std::copy(&m_floatValues[index], &m_floatValues[index + size], out.begin());
+    return out;
+}
+
+template <>
 inline std::array<float, 16> ParameterValues::get(const std::string& key)
 {
-    auto [index, type] = iKey(key);
+    auto [index, _, type] = iKey(key);
     if (type != RS_PARAMETER_TRANSFORM && type != RS_PARAMETER_POSE)
         throw std::runtime_error("Key is not a transform or pose");
     std::array<float, 16> out;
@@ -612,7 +635,7 @@ inline std::array<float, 16> ParameterValues::get(const std::string& key)
 template <>
 inline ImageFrameData ParameterValues::get(const std::string& key)
 {
-    auto [index, type] = iKey(key);
+    auto [index, _, type] = iKey(key);
     if (type != RS_PARAMETER_IMAGE)
         throw std::runtime_error("Key is not an image");
 
@@ -622,7 +645,7 @@ inline ImageFrameData ParameterValues::get(const std::string& key)
 template <>
 inline const char* ParameterValues::get(const std::string& key)
 {
-    auto [index, type] = iKey(key);
+    auto [index, _, type] = iKey(key);
     if (type != RS_PARAMETER_TEXT)
         throw std::runtime_error("Key is not a text param");
 
