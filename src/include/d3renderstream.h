@@ -241,6 +241,7 @@ enum RemoteParameterType
     RS_PARAMETER_TEXT,
     RS_PARAMETER_EVENT,
     RS_PARAMETER_SKELETON,
+    RS_PARAMETER_ARRAY,     // array of floats
 };
 
 enum RemoteParameterDmxType
@@ -302,6 +303,7 @@ typedef struct
     int32_t dmxOffset; // DMX channel offset or auto (-1)
     RemoteParameterDmxType dmxType;
     uint32_t flags; // REMOTEPARAMETER_FLAGS
+    uint32_t nElements; // used primarily for denoting the size of RS_PARAMETER_ARRAY
 } RemoteParameter;
 
 typedef struct

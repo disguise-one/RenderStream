@@ -3,6 +3,8 @@
 Compatible with disguise designer version rXX.x(need to be updated before releasing RS3.0) and above.
 * Added project working colour space in schema
 * When using texture parameters, the engine is required to call `rs_registerTextureParams` to register the received frames before they are used. This must be called from a render thread.
+* Added support for float array parameters (`RS_PARAMETER_ARRAY`).
+    * The `RemoteParameter` struct now ends with a `uint32_t nElements` field, denoting the number of elements in the parameter
 
 # RS2.0
 Compatible with disguise designer version r25.0 and above.
