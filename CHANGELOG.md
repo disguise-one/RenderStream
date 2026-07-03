@@ -1,6 +1,5 @@
 # RS3.0
-
-Compatible with disguise designer version r33.3 and above.
+Compatible with disguise designer version r34.0 and above.
 * Added project working colour space in schema
 * When using texture parameters, the engine is required to call `rs_registerTextureParams` to register the received frames before they are used. This must be called from a render thread.
 
