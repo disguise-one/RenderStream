@@ -113,6 +113,8 @@ public:
     
     inline void getFrameImage(int64_t imageId, /*InOut*/const SenderFrame& data);
 
+    inline void registerTextureParams(); // processes texture parameter registrations, must be called from a render thread
+
     inline std::variant<FrameData, RS_ERROR> awaitFrameData(int timeoutMs);
 
     inline const StreamDescriptions* getStreams();
@@ -157,6 +159,7 @@ private:
     DECL_FN(getFrameImageData);
     DECL_FN(getFrameText);
     DECL_FN(getFrameImage2);
+    DECL_FN(registerTextureParams);
     DECL_FN(awaitFrameData);
     DECL_FN(getFrameCamera);
     DECL_FN(sendFrame2);
@@ -224,6 +227,7 @@ void RenderStream::initialise()
     LOAD_FN(getFrameImageData);
     LOAD_FN(getFrameText);
     LOAD_FN(getFrameImage2);
+    LOAD_FN(registerTextureParams);
     LOAD_FN(getStreams);
     LOAD_FN(awaitFrameData);
     LOAD_FN(getFrameCamera);
@@ -322,6 +326,11 @@ ParameterValues RenderStream::getFrameParameters(const RemoteParameters& scene)
 void RenderStream::getFrameImage(int64_t imageId, const SenderFrame& frame)
 {
     checkRs(m_getFrameImage2(imageId, &frame), __FUNCTION__);
+}
+
+void RenderStream::registerTextureParams()
+{
+    checkRs(m_registerTextureParams(), __FUNCTION__);
 }
 
 std::variant<FrameData, RS_ERROR> RenderStream::awaitFrameData(int timeoutMs)
