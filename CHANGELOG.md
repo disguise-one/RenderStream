@@ -1,7 +1,10 @@
 # RS3.0
 
 Compatible with disguise designer version r31.1 and above.
-* Added project working colour space in schema
+* Added project working colour space in schema.
+* Added support for float array parameters (`RS_PARAMETER_ARRAY`).
+    * The `RemoteParameter` struct now ends with a `uint32_t nElements` field, denoting the number of elements in the parameter.
+* Added schema support for identifying a persistent level in UE using the defaultSceneIndex
 
 # RS2.0
 Compatible with disguise designer version r25.0 and above.
