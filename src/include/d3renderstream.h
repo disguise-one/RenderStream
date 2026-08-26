@@ -195,6 +195,22 @@ typedef struct
     };
 } SenderFrame;
 
+enum AudioSampleFormat
+{
+    RS_AUDIO_FMT_INT16 = 0,
+    RS_AUDIO_FMT_INT24 = 1,
+    RS_AUDIO_FMT_FLOAT32 = 2,
+};
+
+typedef struct
+{
+    const void* data;              // interleaved PCM, samples in sampleFormat
+    uint32_t frameCount;           // samples per channel
+    uint32_t sampleRate;
+    uint32_t channels;
+    AudioSampleFormat sampleFormat;
+} AudioFrameData;
+
 typedef struct
 {
     uint32_t xOffset;
@@ -390,6 +406,7 @@ extern "C" D3_RENDER_STREAM_API RS_ERROR rs_getFrameText(uint64_t schemaHash, ui
 
 extern "C" D3_RENDER_STREAM_API RS_ERROR rs_getFrameCamera(StreamHandle streamHandle, /*Out*/CameraData* outCameraData);  // returns the CameraData for this stream, or RS_ERROR_NOTFOUND if no camera data is available for this stream on this frame
 extern "C" D3_RENDER_STREAM_API RS_ERROR rs_sendFrame2(StreamHandle streamHandle, const SenderFrame* frame, const FrameResponseData* frameData); // publish a frame which was generated from the associated tracking and timing information.
+extern "C" D3_RENDER_STREAM_API RS_ERROR rs_sendAudio(StreamHandle streamHandle, const AudioFrameData* data); // publish interleaved PCM to be muxed into the stream alongside video. Only RS_AUDIO_FMT_INT16 is carried today; other formats return RS_ERROR_INVALID_PARAMETERS.
 
 extern "C" D3_RENDER_STREAM_API RS_ERROR rs_releaseImage2(const SenderFrame* frame); // release any references to image (e.g. before deletion)
 

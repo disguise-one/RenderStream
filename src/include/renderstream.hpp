@@ -93,6 +93,8 @@ public:
 
     inline void sendFrame(StreamHandle stream, const SenderFrame& frame, const FrameResponseData& response);
 
+    inline void sendAudio(StreamHandle stream, const int16_t* pcm, uint32_t frameCount, uint32_t sampleRate, uint32_t channels);
+
     inline void setNewStatusMessage(const char* message);
 
 private:
@@ -118,6 +120,7 @@ private:
     DECL_FN(awaitFrameData);
     DECL_FN(getFrameCamera);
     DECL_FN(sendFrame2);
+    DECL_FN(sendAudio);
     DECL_FN(setNewStatusMessage);
     DECL_FN(shutdown);
 };
@@ -180,6 +183,7 @@ void RenderStream::initialise()
     LOAD_FN(awaitFrameData);
     LOAD_FN(getFrameCamera);
     LOAD_FN(sendFrame2);
+    LOAD_FN(sendAudio);
     LOAD_FN(setNewStatusMessage);
     LOAD_FN(shutdown);
 
@@ -310,6 +314,17 @@ CameraData RenderStream::getFrameCamera(StreamHandle stream)
 void RenderStream::sendFrame(StreamHandle stream, const SenderFrame& frame, const FrameResponseData& response)
 {
     checkRs(m_sendFrame2(stream, &frame, &response), __FUNCTION__);
+}
+
+void RenderStream::sendAudio(StreamHandle stream, const int16_t* pcm, uint32_t frameCount, uint32_t sampleRate, uint32_t channels)
+{
+    AudioFrameData data = {};
+    data.data = pcm;
+    data.frameCount = frameCount;
+    data.sampleRate = sampleRate;
+    data.channels = channels;
+    data.sampleFormat = RS_AUDIO_FMT_INT16;
+    checkRs(m_sendAudio(stream, &data), __FUNCTION__);
 }
 
 void RenderStream::setNewStatusMessage(const char* message)

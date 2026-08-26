@@ -8,6 +8,9 @@
 #include <DirectXMath.h>
 #include <wrl.h>
 #include <unordered_map>
+#include <algorithm>
+#include <cmath>
+#include <cstdint>
 
 // auto-generated from hlsl
 #include "Generated_Code/VertexShader.h"
@@ -174,6 +177,16 @@ int mainImpl()
         Microsoft::WRL::ComPtr<ID3D11RenderTargetView> view;
     };
     std::unordered_map<StreamHandle, RenderTarget> renderTargets;
+
+    // Audio test signal: a 1 kHz beep during the first 50 ms of each second, silence otherwise,
+    // sent as a continuous 48 kHz stereo stream. The visual strobe below uses the same beat, so
+    // the flash and the beep are generated together and stay in sync.
+    constexpr uint32_t audioSampleRate = 48000;
+    constexpr uint32_t audioChannels = 2;
+    uint64_t audioSampleCount = 0;
+    double prevLocalTime = -1.0;
+    std::vector<int16_t> audioBuffer;
+
     while (true)
     {
         // Wait for a frame request
@@ -229,6 +242,28 @@ int mainImpl()
 
         // Respond to frame request
         const FrameData& frameData = std::get<FrameData>(awaitResult);
+
+        // Generate this frame's worth of PCM from the elapsed local time, so the audio stream keeps
+        // pace with the video regardless of frame rate.
+        double frameDelta = (prevLocalTime < 0.0) ? (1.0 / 60.0) : (frameData.localTime - prevLocalTime);
+        prevLocalTime = frameData.localTime;
+        frameDelta = std::fmax(0.0, std::fmin(frameDelta, 0.1));
+        const uint32_t audioFrames = static_cast<uint32_t>(audioSampleRate * frameDelta);
+        audioBuffer.assign(static_cast<size_t>(audioFrames) * audioChannels, 0);
+        for (uint32_t s = 0; s < audioFrames; ++s)
+        {
+            const double t = static_cast<double>(audioSampleCount + s) / static_cast<double>(audioSampleRate);
+            const int16_t value = (std::fmod(t, 1.0) < 0.05)
+                ? static_cast<int16_t>(std::sin(2.0 * 3.14159265358979323846 * 1000.0 * t) * 8000.0)
+                : int16_t(0);
+            audioBuffer[static_cast<size_t>(s) * audioChannels + 0] = value;
+            audioBuffer[static_cast<size_t>(s) * audioChannels + 1] = value;
+        }
+        audioSampleCount += audioFrames;
+
+        // Visual strobe on the same beat as the beep.
+        const bool strobeOn = std::fmod(frameData.localTime, 1.0) < 0.05;
+
         const size_t numStreams = header ? header->nStreams : 0;
         for (size_t i = 0; i < numStreams; ++i)
         {
@@ -255,7 +290,12 @@ int mainImpl()
                 const RenderTarget& target = renderTargets.at(description.handle);
                 context->OMSetRenderTargets(1, target.view.GetAddressOf(), nullptr);
 
-                const float clearColour[4] = { 0.f, 0.2f, 0.f, 0.f };
+                const float clearColour[4] = {
+                    strobeOn ? 1.f : 0.f,
+                    strobeOn ? 1.f : 0.2f,
+                    strobeOn ? 1.f : 0.f,
+                    strobeOn ? 1.f : 0.f
+                };
                 context->ClearRenderTargetView(target.view.Get(), clearColour);
 
                 D3D11_VIEWPORT viewport;
@@ -337,6 +377,9 @@ int mainImpl()
                 FrameResponseData response = {};
                 response.cameraData = &cameraData;
                 rs.sendFrame(description.handle, data, response);
+
+                if (audioFrames > 0)
+                    rs.sendAudio(description.handle, audioBuffer.data(), audioFrames, audioSampleRate, audioChannels);
             }
         }
     }

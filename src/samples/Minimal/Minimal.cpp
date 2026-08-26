@@ -101,7 +101,7 @@ int mainImpl()
                 SenderFrame data;
                 data.type = RS_FRAMETYPE_HOST_MEMORY;
                 data.cpu.stride = description.width * uint32_t(pixel.size());
-                data.cpu.format = RS_FMT_BGRA8;
+                data.cpu.format = description.format;
                 std::vector<uint8_t> pixels;
                 pixels.reserve(data.cpu.stride * description.height);
                 // Fill canvas with variable-sized pixels
