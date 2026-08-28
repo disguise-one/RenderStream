@@ -1,9 +1,21 @@
-// A simple RenderStream application that sends back a 3D scene using a DX11 texture
+// A RenderStream application that sends back a 3D scene using a DX11 texture, with an audio test
+// signal alongside it for identifying which output is which
 //
 // Usage: Compile, copy the executable into your RenderStream Projects folder and launch via d3
+//
+// Each channel gets its own slot and its own tone, so only one channel is ever sounding: an output
+// is identified by when it beeps, by its pitch, and by the channel number drawn on the frame while
+// its slot is active. Paced for a person walking the outputs - the tone for the first part of a slot
+// and silence for the rest, leaving a clear gap before the next channel.
+//
+// The channel count and the sample rate are remote parameters, so both can be changed from d3 while
+// running. Note this changes only what the engine sends: d3 fixes the stream's own channel count and
+// rate when the stream is created, from the audio output device the workload is pointed at, so
+// deliberately mismatching them is part of what this asset is for.
 
 #include <vector>
 #include <d3d11.h>
+#include <d3d11_1.h>   // ID3D11DeviceContext1::ClearView, used to draw the channel number
 #include <d3dcompiler.h>
 #include <DirectXMath.h>
 #include <wrl.h>
@@ -38,6 +50,198 @@ DXGI_FORMAT toDxgiFormat(RSPixelFormat format)
         return DXGI_FORMAT_R16G16B16A16_UNORM;
     default:
         throw std::runtime_error("Unhandled RS pixel format");
+    }
+}
+
+namespace audio
+{
+    constexpr uint32_t channelsDefault = 4;
+    // ffmpeg's AAC encoder carries up to 16, but this test caps at 8: the cue draws the channel
+    // number as a single digit, and a full pass stays 4 seconds at 0.5s slots.
+    constexpr uint32_t channelsMax = 8;
+    // Rates offered by the sample rate parameter; its value is an index into this list, so the order
+    // is what d3 stores and must not be shuffled. AAC carries all three.
+    constexpr uint32_t sampleRates[] = { 44100, 48000, 96000 };
+    constexpr uint32_t sampleRateDefaultIndex = 1;
+    // Time given to each channel. A fixed length, so every channel gets the same tone and the same gap.
+    constexpr double slotSeconds = 0.5;
+    constexpr double beepSeconds = 0.2;  // nominal tone length within a slot
+    static_assert(beepSeconds < slotSeconds, "the beep must leave a gap before the next channel");
+    constexpr double toneBaseHz = 440.0;
+    constexpr double toneStepHz = 220.0;
+    // Tone level in int16 sample units: 8000 of 32767 full scale, about -12 dBFS. Loud enough to hear
+    // on a desk monitor and clear of clipping - but hotter than a line-up tone (-18 dBFS EBU), so not
+    // a level reference.
+    constexpr int16_t toneAmplitude{ 8000 };
+
+    // Slots are measured in samples, so the audio and the visual cue index them the same way. Runtime
+    // rather than constant now the rate is a parameter, and a whole number of samples at every rate
+    // offered - slotAt divides by it, and a fractional slot would drift the tone against the flash.
+    static uint64_t samplesPerSlot(uint32_t sampleRate)
+    {
+        return uint64_t(sampleRate * slotSeconds);
+    }
+
+    constexpr bool slotsAreWholeSamples()
+    {
+        for (uint32_t rate : sampleRates)
+        {
+            if (double(uint64_t(rate * slotSeconds)) != rate * slotSeconds)
+                return false;
+        }
+        return true;
+    }
+    static_assert(slotsAreWholeSamples(), "every offered rate must give a whole number of samples per slot");
+
+    // The state of the test signal at one sample. Slots are a fixed length, tile the timeline and are
+    // handed out round-robin, so this is the single place both the tone and the visual cue come from.
+    struct Slot
+    {
+        uint32_t channel;    // the one channel sounding in this slot
+        double hz;           // its tone
+        double timeInSlot;   // elapsed time since the slot began
+        double beepSeconds;  // tone length within the slot; silence after this
+
+        bool sounding() const { return timeInSlot < beepSeconds; }
+    };
+
+    static Slot slotAt(uint64_t sample, uint32_t channels, uint32_t sampleRate)
+    {
+        const uint64_t perSlot = samplesPerSlot(sampleRate);
+        const uint32_t channel = uint32_t(sample / perSlot % channels);
+        const double hz = toneBaseHz + toneStepHz * channel;
+        // The nominal beepSeconds rounded down to a whole number of cycles of this channel's own tone,
+        // so it starts and ends on a zero crossing rather than a click. Every channel is given the same
+        // nominal length; only this rounding differs between them.
+        const double beep = std::max<double>(1.0, std::floor(beepSeconds * hz)) / hz;
+        return { channel, hz, double(sample % perSlot) / sampleRate, beep };
+    }
+}
+
+// Remote parameter keys. A key is the identity d3 binds stored values, sequencing and DMX mappings
+// to, so it must not change once a project uses it - display names can be reworded freely.
+namespace keys
+{
+    constexpr const char* audioChannels = "stable_key_audio_channels";
+    constexpr const char* sampleRate = "stable_key_sample_rate";
+}
+
+// The frame's background colour.
+static constexpr float backgroundGreen[4] = { 0.f, 0.2f, 0.f, 0.f };
+
+static void buildSchema(ScopedSchema& scoped)
+{
+    scoped.schema.engineName = _strdup("DX11 audio sample");
+    scoped.schema.engineVersion = _strdup(("RS" + std::to_string(RENDER_STREAM_VERSION_MAJOR) + "." + std::to_string(RENDER_STREAM_VERSION_MINOR)).c_str());
+    scoped.schema.info = _strdup("");
+
+    scoped.schema.channels.nChannels = 1;
+    scoped.schema.channels.channels = static_cast<const char**>(malloc(sizeof(const char*)));
+    scoped.schema.channels.channels[0] = _strdup("Default");
+
+    scoped.schema.scenes.nScenes = 1;
+    scoped.schema.scenes.scenes = static_cast<RemoteParameters*>(malloc(sizeof(RemoteParameters)));
+    RemoteParameters& scene = scoped.schema.scenes.scenes[0];
+    scene.name = _strdup("Audio test");
+    scene.nParameters = 2;
+    scene.parameters = static_cast<RemoteParameter*>(malloc(scene.nParameters * sizeof(RemoteParameter)));
+
+    RemoteParameter& channels = scene.parameters[0];
+    channels.group = _strdup("Audio");
+    channels.displayName = _strdup("Audio channels");
+    channels.key = _strdup(keys::audioChannels);
+    channels.type = RS_PARAMETER_NUMBER;
+    channels.defaults.number.defaultValue = float(audio::channelsDefault);
+    channels.defaults.number.min = 1.f;
+    channels.defaults.number.max = float(audio::channelsMax);
+    channels.defaults.number.step = 1.f;
+    channels.nOptions = 0;
+    channels.options = nullptr;
+    channels.dmxOffset = -1; // Auto
+    channels.dmxType = RS_DMX_16_BE;
+    channels.flags = REMOTEPARAMETER_NO_FLAGS;
+
+    // A list parameter: what d3 sends back is an index into audio::sampleRates, which is why the
+    // options are the rates as text.
+    RemoteParameter& rate = scene.parameters[1];
+    rate.group = _strdup("Audio");
+    rate.displayName = _strdup("Sample rate");
+    rate.key = _strdup(keys::sampleRate);
+    rate.type = RS_PARAMETER_NUMBER;
+    rate.defaults.number.defaultValue = float(audio::sampleRateDefaultIndex);
+    rate.defaults.number.min = 0.f;
+    rate.defaults.number.max = float(std::size(audio::sampleRates) - 1);
+    rate.defaults.number.step = 1.f;
+    rate.nOptions = uint32_t(std::size(audio::sampleRates));
+    rate.options = static_cast<const char**>(malloc(rate.nOptions * sizeof(const char*)));
+    for (uint32_t i = 0; i < rate.nOptions; ++i)
+        rate.options[i] = _strdup(std::to_string(audio::sampleRates[i]).c_str());
+    rate.dmxOffset = -1; // Auto
+    rate.dmxType = RS_DMX_16_BE;
+    rate.flags = REMOTEPARAMETER_NO_FLAGS;
+}
+
+// The on-frame cue: the number of the channel that is sounding, and a flash while it sounds.
+namespace cue
+{
+    // Used for both the beep flash and the channel number.
+    constexpr float white[4] = { 1.f, 1.f, 1.f, 1.f };
+    // Side of the flash square as a fraction of the frame's shorter edge.
+    constexpr double flashSquareFraction = 0.25;
+
+    // 3x5 glyphs for the digits 0 to 9, one byte per row, low 3 bits being the pixels left to right.
+    constexpr uint8_t digitGlyphs[10][5] =
+    {
+        { 0b111, 0b101, 0b101, 0b101, 0b111 },
+        { 0b010, 0b110, 0b010, 0b010, 0b111 },
+        { 0b111, 0b001, 0b111, 0b100, 0b111 },
+        { 0b111, 0b001, 0b111, 0b001, 0b111 },
+        { 0b101, 0b101, 0b111, 0b001, 0b001 },
+        { 0b111, 0b100, 0b111, 0b001, 0b111 },
+        { 0b111, 0b100, 0b111, 0b101, 0b111 },
+        { 0b111, 0b001, 0b001, 0b001, 0b001 },
+        { 0b111, 0b101, 0b111, 0b101, 0b111 },
+        { 0b111, 0b101, 0b111, 0b001, 0b111 },
+    };
+
+    static_assert(audio::channelsMax < 10, "the channel number is drawn as a single digit");
+
+    // Draw the frame's cue over the scene: the sounding channel's number in the top-left corner, and
+    // while it is sounding a square in the middle of the frame
+    static void draw(ID3D11DeviceContext1* context, ID3D11RenderTargetView* view, uint32_t channel,
+                     bool sounding, uint32_t frameWidth, uint32_t frameHeight)
+    {
+        if (!context)
+            return;
+
+        // Scaled off the shorter edge, not the height: on a portrait mapping a height-derived glyph
+        // grows wide enough to reach the flash square in the middle of the frame.
+        const LONG shorterEdge = LONG(std::min<uint32_t>(frameWidth, frameHeight));
+        const LONG pixel = std::max<LONG>(2, shorterEdge / 16); // one glyph pixel
+        const LONG margin = pixel;
+
+        std::vector<D3D11_RECT> rects;
+        for (LONG row = 0; row < 5; ++row)
+        {
+            for (LONG col = 0; col < 3; ++col)
+            {
+                if ((digitGlyphs[channel][row] & (0b100 >> col)) == 0)
+                    continue;
+
+                rects.push_back({ margin + col * pixel, margin + row * pixel,
+                                  margin + (col + 1) * pixel, margin + (row + 1) * pixel });
+            }
+        }
+
+        const LONG side = LONG(shorterEdge * flashSquareFraction);
+        if (sounding && side > 0)
+        {
+            const LONG left = LONG(frameWidth) / 2 - side / 2;
+            const LONG top = LONG(frameHeight) / 2 - side / 2;
+            rects.push_back({ left, top, left + side, top + side });
+        }
+
+        context->ClearView(view, white, rects.data(), UINT(rects.size()));
     }
 }
 
@@ -168,6 +372,20 @@ int mainImpl()
         }
     }
 
+    ScopedSchema scoped;
+    buildSchema(scoped);
+    rs.setSchema(&scoped.schema);
+    {
+        // Saving the schema to schema json: makes the parameter visible in d3's UI before the workload is launched.
+        char assetPath[MAX_PATH] = {};
+        if (GetModuleFileNameA(nullptr, assetPath, MAX_PATH) > 0)
+            rs.saveSchema(assetPath, &scoped.schema);
+    }
+
+    Microsoft::WRL::ComPtr<ID3D11DeviceContext1> context1;
+    if (FAILED(context.As(&context1)))
+        LOG("ID3D11DeviceContext1 unavailable; frames will carry no channel number");
+
     rs.initialiseGpGpuWithDX11Device(device.Get());
 
     const StreamDescriptions* header = nullptr;
@@ -178,13 +396,9 @@ int mainImpl()
     };
     std::unordered_map<StreamHandle, RenderTarget> renderTargets;
 
-    // Audio test signal: a 1 kHz beep during the first 50 ms of each second, silence otherwise,
-    // sent as a continuous 48 kHz stereo stream. The visual strobe below uses the same beat, so
-    // the flash and the beep are generated together and stay in sync.
-    constexpr uint32_t audioSampleRate = 48000;
-    constexpr uint32_t audioChannels = 2;
-    uint64_t audioSampleCount = 0;
-    double prevLocalTime = -1.0;
+    uint32_t audioChannels = audio::channelsDefault;
+    uint32_t audioSampleRate = audio::sampleRates[audio::sampleRateDefaultIndex];
+    uint64_t audioSampleCount = 0;  // how many samples have been emitted so far
     std::vector<int16_t> audioBuffer;
 
     while (true)
@@ -243,26 +457,70 @@ int mainImpl()
         // Respond to frame request
         const FrameData& frameData = std::get<FrameData>(awaitResult);
 
-        // Generate this frame's worth of PCM from the elapsed local time, so the audio stream keeps
-        // pace with the video regardless of frame rate.
-        double frameDelta = (prevLocalTime < 0.0) ? (1.0 / 60.0) : (frameData.localTime - prevLocalTime);
-        prevLocalTime = frameData.localTime;
-        frameDelta = std::fmax(0.0, std::fmin(frameDelta, 0.1));
-        const uint32_t audioFrames = static_cast<uint32_t>(audioSampleRate * frameDelta);
-        audioBuffer.assign(static_cast<size_t>(audioFrames) * audioChannels, 0);
+        // Remote parameter: how many channels to send. Guarded because d3 can request a frame before
+        // it has picked up the schema, which would otherwise throw; the last known count is kept.
+        if (frameData.scene < scoped.schema.scenes.nScenes)
+        {
+            try
+            {
+                ParameterValues values = rs.getFrameParameters(scoped.schema.scenes.scenes[frameData.scene]);
+
+                const long channelsRounded = std::lround(values.get<float>(keys::audioChannels));
+                const uint32_t requestedChannels = uint32_t(std::clamp<long>(channelsRounded, 1, audio::channelsMax));
+                if (requestedChannels != audioChannels)
+                {
+                    LOG("Audio channels " << audioChannels << " -> " << requestedChannels
+                        << " (cycle " << audio::slotSeconds * requestedChannels << "s)");
+                    audioChannels = requestedChannels;
+                }
+
+                // A list parameter, so the value is an index into audio::sampleRates.
+                const long rateIndex = std::lround(values.get<float>(keys::sampleRate));
+                const uint32_t requestedRate = audio::sampleRates[std::clamp<long>(rateIndex, 0, long(std::size(audio::sampleRates)) - 1)];
+                if (requestedRate != audioSampleRate)
+                {
+                    LOG("Audio sample rate " << audioSampleRate << " -> " << requestedRate);
+                    audioSampleRate = requestedRate;
+                    // The clock below counts in samples, so its history means nothing at a new rate:
+                    // restart it from this frame rather than converting.
+                    audioSampleCount = static_cast<uint64_t>(frameData.localTime * audioSampleRate);
+                }
+            }
+            catch (const RenderStreamError& e)
+            {
+                if (e.error != RS_ERROR_INCORRECTSCHEMA)
+                    throw;
+            }
+        }
+
+        // Where the audio stream should have reached by this frame.
+        const uint64_t targetSample = static_cast<uint64_t>(frameData.localTime * audioSampleRate);
+
+        // A first frame, a seek, or a stall resyncs rather than trying to fill the whole gap.
+        const uint64_t audioMaxCatchUpSamples = audioSampleRate / 10; // 100 ms
+        const bool seekHappened = targetSample < audioSampleCount || targetSample - audioSampleCount > audioMaxCatchUpSamples;
+        if (seekHappened)
+            audioSampleCount = targetSample;
+
+        const uint32_t audioFrames = static_cast<uint32_t>(targetSample - audioSampleCount);
+        // Always allocated at the maximum width, whatever the current count - see audio::channelsMax.
+        audioBuffer.assign(static_cast<size_t>(audioFrames) * audio::channelsMax, 0);
         for (uint32_t s = 0; s < audioFrames; ++s)
         {
-            const double t = static_cast<double>(audioSampleCount + s) / static_cast<double>(audioSampleRate);
-            const int16_t value = (std::fmod(t, 1.0) < 0.05)
-                ? static_cast<int16_t>(std::sin(2.0 * 3.14159265358979323846 * 1000.0 * t) * 8000.0)
-                : int16_t(0);
-            audioBuffer[static_cast<size_t>(s) * audioChannels + 0] = value;
-            audioBuffer[static_cast<size_t>(s) * audioChannels + 1] = value;
-        }
-        audioSampleCount += audioFrames;
+            const audio::Slot slot = audio::slotAt(audioSampleCount + s, audioChannels, audioSampleRate);
+            if (!slot.sounding())
+                continue; // between beeps: leave the silence assign() already wrote
 
-        // Visual strobe on the same beat as the beep.
-        const bool strobeOn = std::fmod(frameData.localTime, 1.0) < 0.05;
+            // Only the slot's own channel carries a tone; every other channel stays silent.
+            audioBuffer[static_cast<size_t>(s) * audioChannels + slot.channel] =
+                static_cast<int16_t>(std::sin(DirectX::XM_2PI * slot.hz * slot.timeInSlot) * audio::toneAmplitude);
+        }
+        audioSampleCount = targetSample;
+
+        // Visual cue from the same clock and the same slots as the audio: the number is the channel
+        // currently sounding, held for its whole slot so it stays readable, and the square in the
+        // middle of the frame flashes for exactly the length of that channel's beep.
+        const audio::Slot frameSlot = audio::slotAt(targetSample, audioChannels, audioSampleRate);
 
         const size_t numStreams = header ? header->nStreams : 0;
         for (size_t i = 0; i < numStreams; ++i)
@@ -290,13 +548,7 @@ int mainImpl()
                 const RenderTarget& target = renderTargets.at(description.handle);
                 context->OMSetRenderTargets(1, target.view.GetAddressOf(), nullptr);
 
-                const float clearColour[4] = {
-                    strobeOn ? 1.f : 0.f,
-                    strobeOn ? 1.f : 0.2f,
-                    strobeOn ? 1.f : 0.f,
-                    strobeOn ? 1.f : 0.f
-                };
-                context->ClearRenderTargetView(target.view.Get(), clearColour);
+                context->ClearRenderTargetView(target.view.Get(), backgroundGreen);
 
                 D3D11_VIEWPORT viewport;
                 ZeroMemory(&viewport, sizeof(D3D11_VIEWPORT));
@@ -369,6 +621,11 @@ int mainImpl()
                     context->DrawIndexed(indexCount, startIndex, 0);
                     startIndex += indexCount;
                 }
+
+                // Drawn over the cube: the channel number for the whole slot, the flash square only
+                // while that channel is sounding.
+                cue::draw(context1.Get(), target.view.Get(), frameSlot.channel, frameSlot.sounding(),
+                        description.width, description.height);
 
                 SenderFrame data;
                 data.type = RS_FRAMETYPE_DX11_TEXTURE;
