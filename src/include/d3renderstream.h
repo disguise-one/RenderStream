@@ -349,6 +349,8 @@ typedef struct
     RSColourSpace workingColourSpace;
     Channels channels;
     Scenes scenes;
+    int32_t defaultSceneIndex;
+    uint32_t hasAudio; // non-zero if the asset sends audio via rs_sendAudio; added in r3.1
 } Schema;
 
 typedef struct
@@ -362,7 +364,7 @@ typedef struct
 #define D3_RENDER_STREAM_API __declspec( dllexport )
 
 #define RENDER_STREAM_VERSION_MAJOR 3
-#define RENDER_STREAM_VERSION_MINOR 0
+#define RENDER_STREAM_VERSION_MINOR 1
 
 #define RENDER_STREAM_VERSION_STRING stringify(RENDER_STREAM_VERSION_MAJOR) "." stringify(RENDER_STREAM_VERSION_MINOR)
 

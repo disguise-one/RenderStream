@@ -287,7 +287,7 @@ struct ConstantBufferStruct
     DirectX::XMMATRIX worldViewProjection;
 };
 
-int mainImpl()
+int mainImpl(int argc, char** argv)
 {
     RenderStream rs;
 
@@ -387,6 +387,24 @@ int mainImpl()
         LOG("ID3D11DeviceContext1 unavailable; frames will carry no channel number");
 
     rs.initialiseGpGpuWithDX11Device(device.Get());
+
+    // Declare that this asset sends audio, so d3 offers an audio output for it and accounts for the
+    // audio track in its bandwidth estimate. Saved to disk so d3 knows before the asset is launched.
+    std::vector<const char*> channels;
+    channels.push_back("Default");
+
+    ScopedSchema scoped;
+    scoped.schema.engineName = _strdup("DX11 sample");
+    scoped.schema.engineVersion = _strdup(("RS" + std::to_string(RENDER_STREAM_VERSION_MAJOR) + "." + std::to_string(RENDER_STREAM_VERSION_MINOR)).c_str());
+    scoped.schema.pluginVersion = _strdup(("RS" + std::to_string(RENDER_STREAM_VERSION_MAJOR) + "." + std::to_string(RENDER_STREAM_VERSION_MINOR) + "-Samples").c_str());
+    scoped.schema.info = _strdup("");
+    scoped.schema.workingColourSpace = RSColourSpace::RS_COLOUR_SPACE_UNKNOWN;
+    scoped.schema.channels.nChannels = static_cast<uint32_t>(channels.size());
+    scoped.schema.channels.channels = channels.data();
+    scoped.schema.defaultSceneIndex = -1;
+    scoped.schema.hasAudio = 1;
+    rs.setSchema(&scoped.schema);
+    rs.saveSchema(argv[0], &scoped.schema);
 
     const StreamDescriptions* header = nullptr;
     struct RenderTarget
@@ -644,11 +662,11 @@ int mainImpl()
     return 0;
 }
 
-int main()
+int main(int argc, char** argv)
 {
     try
     {
-        return mainImpl();
+        return mainImpl(argc, argv);
     }
     catch (const std::exception& e)
     {

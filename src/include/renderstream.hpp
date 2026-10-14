@@ -516,6 +516,8 @@ private:
         schema.channels.channels = nullptr;
         schema.scenes.nScenes = 0;
         schema.scenes.scenes = nullptr;
+        schema.defaultSceneIndex = -1;
+        schema.hasAudio = 0;
     }
 };
 
