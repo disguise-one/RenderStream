@@ -46,6 +46,7 @@ struct ScopedSchema
         schema.channels.channels = nullptr;
         schema.scenes.nScenes = 0;
         schema.scenes.scenes = nullptr;
+        schema.defaultSceneIndex = -1;
     }
     ScopedSchema(const ScopedSchema&) = delete;
     ScopedSchema(ScopedSchema&& other)

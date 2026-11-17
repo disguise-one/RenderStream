@@ -45,6 +45,7 @@ void addField(RemoteParameter& parameter, const std::string& key, const std::str
         parameter.flags |= REMOTEPARAMETER_NO_SEQUENCE;
     if (readOnly)
         parameter.flags |= REMOTEPARAMETER_READ_ONLY;
+    parameter.nElements = 1;
 }
 
 int mainImpl(int argc, char** argv)
